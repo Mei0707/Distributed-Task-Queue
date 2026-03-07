@@ -1,0 +1,35 @@
+server:
+  port: "8080"
+  read_timeout: 10s
+  write_timeout: 10s
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+# Queue weights for weighted priority scheduling.
+# Workers pick tasks from queues proportionally to these weights.
+# critical=6, default=3, low=1 means:
+#   ~60% of processing power → critical queue
+#   ~30%                     → default queue
+#   ~10%                     → low queue
+queue:
+  critical: 6
+  default: 3
+  low: 1
+
+worker:
+  # Number of concurrent goroutines processing tasks.
+  # Rule of thumb for IO-bound tasks: 2-4x your CPU count.
+  # For CPU-bound tasks (image processing): match your CPU count.
+  concurrency: 20
+
+  # Max duration a single task can run before context cancellation.
+  task_timeout: 5m
+
+  # Global max retry count (can be overridden per task type).
+  max_retry: 5
+
+  # How long completed tasks are kept in Redis for inspection.
+  retention_ttl: 72h
