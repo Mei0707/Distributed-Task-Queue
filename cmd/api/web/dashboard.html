@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Queue Dashboard</title>
+  <link rel="stylesheet" href="/dashboard/assets/dashboard.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Distributed Queue</p>
+        <h1>Queue Dashboard</h1>
+        <p class="subtitle">Live visibility into queue load, retries, scheduled work, and dead-letter tasks.</p>
+      </div>
+      <div class="hero-actions">
+        <button id="refresh-button" class="primary-button">Refresh now</button>
+        <span id="last-updated" class="last-updated">Loading...</span>
+      </div>
+    </header>
+
+    <main class="dashboard-grid">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="section-label">Queues</p>
+            <h2>Overview</h2>
+          </div>
+          <span id="queue-count" class="pill">0 queues</span>
+        </div>
+        <div id="queue-summary" class="queue-summary"></div>
+        <div id="queue-cards" class="queue-cards"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="section-label">Details</p>
+            <h2 id="selected-queue-title">Select a queue</h2>
+          </div>
+          <span id="selected-queue-status" class="pill muted">Waiting</span>
+        </div>
+
+        <div id="queue-detail-stats" class="detail-stats empty-state">
+          Choose a queue to inspect its current state and task lists.
+        </div>
+
+        <div class="task-sections">
+          <section class="task-panel">
+            <div class="task-panel-header">
+              <h3>Pending</h3>
+              <span id="pending-count" class="task-count">0</span>
+            </div>
+            <div id="pending-list" class="task-list empty-state">No tasks loaded.</div>
+          </section>
+
+          <section class="task-panel">
+            <div class="task-panel-header">
+              <h3>Active</h3>
+              <span id="active-count" class="task-count">0</span>
+            </div>
+            <div id="active-list" class="task-list empty-state">No tasks loaded.</div>
+          </section>
+
+          <section class="task-panel">
+            <div class="task-panel-header">
+              <h3>Scheduled</h3>
+              <span id="scheduled-count" class="task-count">0</span>
+            </div>
+            <div id="scheduled-list" class="task-list empty-state">No tasks loaded.</div>
+          </section>
+
+          <section class="task-panel">
+            <div class="task-panel-header">
+              <h3>Retry</h3>
+              <span id="retry-count" class="task-count">0</span>
+            </div>
+            <div id="retry-list" class="task-list empty-state">No tasks loaded.</div>
+          </section>
+
+          <section class="task-panel">
+            <div class="task-panel-header">
+              <h3>Archived</h3>
+              <span id="archived-count" class="task-count">0</span>
+            </div>
+            <div id="archived-list" class="task-list empty-state">No tasks loaded.</div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/dashboard/assets/dashboard.js"></script>
+</body>
+</html>

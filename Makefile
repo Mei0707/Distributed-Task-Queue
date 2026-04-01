@@ -1,4 +1,4 @@
-.PHONY: help run-api run-worker build tidy test redis-up redis-down asynqmon
+.PHONY: help run-api run-worker build tidy test redis-up redis-down
 
 # Default target
 help:
@@ -10,7 +10,7 @@ help:
 	@echo "  make test          Run all tests"
 	@echo "  make redis-up      Start Redis in Docker"
 	@echo "  make redis-down    Stop Redis Docker container"
-	@echo "  make asynqmon      Start Asynqmon Web UI (port 8081)"
+	@echo "  Dashboard:         http://localhost:8080/dashboard"
 	@echo ""
 
 # Run API server (requires Redis running)
@@ -44,12 +44,3 @@ redis-up:
 # Stop Redis container
 redis-down:
 	docker stop asynq-redis && docker rm asynq-redis
-
-# Start Asynqmon Web UI for queue monitoring
-# Open http://localhost:8081 after running
-asynqmon:
-	docker run -d --name asynqmon \
-		-p 8081:8080 \
-		hibiken/asynqmon:latest \
-		--redis-addr=host.docker.internal:6379
-	@echo "Asynqmon Web UI: http://localhost:8081"

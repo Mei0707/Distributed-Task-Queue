@@ -1,6 +1,7 @@
-package api
+package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,10 @@ func NewRouter(client *asynq.Client, inspector *asynq.Inspector, logger *zap.Log
 	// --- Global Middleware ---
 	r.Use(middleware.Recovery(logger))
 	r.Use(middleware.RequestLogger(logger))
+
+	if err := registerDashboardRoutes(r); err != nil {
+		panic(fmt.Sprintf("failed to register dashboard routes: %v", err))
+	}
 
 	// --- Health Check ---
 	// Used by load balancers and Kubernetes liveness probes

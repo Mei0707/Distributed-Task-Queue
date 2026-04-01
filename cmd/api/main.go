@@ -12,7 +12,6 @@ import (
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
-	"github.com/yourname/asynq-task-queue/cmd/api"
 	"github.com/yourname/asynq-task-queue/internal/config"
 	"github.com/yourname/asynq-task-queue/pkg/logger"
 )
@@ -54,7 +53,7 @@ func main() {
 	defer inspector.Close()
 
 	// --- Build HTTP Router ---
-	router := api.NewRouter(client, inspector, log)
+	router := NewRouter(client, inspector, log)
 
 	// --- HTTP Server with graceful shutdown ---
 	srv := &http.Server{

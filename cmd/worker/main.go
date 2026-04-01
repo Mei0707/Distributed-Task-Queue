@@ -14,8 +14,6 @@ import (
 )
 
 // The worker binary is a separate process from the API server.
-//
-// Why separate processes?
 //   - Independent scaling: scale workers based on queue depth, API by RPS
 //   - Fault isolation: a worker crash doesn't affect API availability
 //   - Resource control: CPU-heavy image processing won't starve HTTP responses
