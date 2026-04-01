@@ -67,7 +67,9 @@ A production-ready distributed task queue system built with [Asynq](https://gith
 │   │   ├── router.go           # All route registrations
 │   │   ├── email_handler.go    # POST /tasks/email
 │   │   ├── image_handler.go    # POST /tasks/image/resize
-│   │   └── inspect_handler.go  # GET /queues/... (monitoring)
+│   │   ├── inspect_handler.go  # Queue inspection and control endpoints
+│   │   ├── dashboard_handler.go# Built-in dashboard route
+│   │   └── web/                # Embedded dashboard assets
 │   └── worker/
 │       └── main.go             # Worker entrypoint
 │
@@ -130,6 +132,21 @@ make run-worker
 make run-api
 ```
 
+### 5. Open the Built-in Dashboard
+
+```text
+http://localhost:8080/dashboard
+```
+
+The dashboard is served by your own API server and can be used to:
+
+- Enqueue email tasks from the browser
+- Enqueue image resize tasks from the browser
+- Inspect queue depth and task states
+- Pause and resume queues
+- Run scheduled, retry, or archived tasks immediately
+- Archive or delete queued tasks
+
 ---
 
 ## API Reference
@@ -185,6 +202,9 @@ POST /api/v1/tasks/image/resize
 ### Monitor Queues
 
 ```bash
+# Built-in dashboard
+GET /dashboard
+
 # List all queues
 GET /api/v1/queues
 
@@ -205,6 +225,15 @@ GET /api/v1/queues/default/tasks/retry
 
 # Dead letter queue (exhausted all retries)
 GET /api/v1/queues/default/tasks/archived
+
+# Pause and resume a queue
+POST /api/v1/queues/default/pause
+POST /api/v1/queues/default/unpause
+
+# Task control actions
+POST   /api/v1/queues/default/tasks/:task_id/run
+POST   /api/v1/queues/default/tasks/:task_id/archive
+DELETE /api/v1/queues/default/tasks/:task_id
 ```
 
 ---
@@ -246,7 +275,7 @@ delay = 2^n + jitter   where n = retry attempt number
 ```
 
 Tasks in the `archived` queue can be:
-- Re-run via Asynqmon Web UI
+- Re-run from the built-in dashboard
 - Re-run via `asynq` CLI: `asynq task run --queue=default --id=<task_id>`
 - Deleted if no longer needed
 
@@ -266,14 +295,23 @@ WORKER_CONCURRENCY=50
 
 ---
 
-## Web UI (Asynqmon)
+## Web UI
 
-```bash
-make asynqmon
-# Open: http://localhost:8081
+This project now includes its own queue dashboard at:
+
+```text
+http://localhost:8080/dashboard
 ```
 
-Provides real-time visibility into queue depths, task states, retry counts, and processed/failed metrics. Can manually retry or delete archived tasks.
+It is backed by the same API server and queue inspection endpoints in this repo, so you can test the system end-to-end without running Asynqmon.
+
+Current dashboard capabilities:
+
+- Live queue visibility with auto-refresh
+- Browser-based enqueue forms for email and image tasks
+- Queue pause/resume controls
+- Task actions for run-now, archive, and delete
+- Visibility into pending, active, scheduled, retry, and archived tasks
 
 ---
 
