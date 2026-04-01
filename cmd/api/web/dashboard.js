@@ -7,6 +7,11 @@
   const queueDetailStatsEl = document.getElementById("queue-detail-stats");
   const lastUpdatedEl = document.getElementById("last-updated");
   const refreshButtonEl = document.getElementById("refresh-button");
+  const feedbackBannerEl = document.getElementById("action-feedback");
+  const pauseQueueButtonEl = document.getElementById("pause-queue-button");
+  const unpauseQueueButtonEl = document.getElementById("unpause-queue-button");
+  const emailFormEl = document.getElementById("email-form");
+  const imageFormEl = document.getElementById("image-form");
 
   const taskTargets = {
     pending: document.getElementById("pending-list"),
@@ -26,12 +31,17 @@
 
   let selectedQueue = "";
 
-  async function fetchJSON(path) {
-    const response = await fetch(path);
+  async function fetchJSON(path, options) {
+    const response = await fetch(path, options);
+    const isJSON = (response.headers.get("content-type") || "").includes("application/json");
+    const body = isJSON ? await response.json() : null;
+
     if (!response.ok) {
-      throw new Error("Request failed: " + response.status);
+      const errorMessage = body && body.error ? body.error : "Request failed: " + response.status;
+      throw new Error(errorMessage);
     }
-    return response.json();
+
+    return body;
   }
 
   async function loadDashboard() {
@@ -51,8 +61,7 @@
 
       const stats = await Promise.all(
         queues.map(async function (queueName) {
-          const detail = await fetchJSON("/api/v1/queues/" + encodeURIComponent(queueName) + "/stats");
-          return detail;
+          return fetchJSON("/api/v1/queues/" + encodeURIComponent(queueName) + "/stats");
         })
       );
 
@@ -67,9 +76,10 @@
 
       lastUpdatedEl.textContent = "Updated " + new Date().toLocaleTimeString();
     } catch (error) {
-      queueCardsEl.innerHTML = '<div class="empty-state">Failed to load queue data. ' + error.message + "</div>";
+      queueCardsEl.innerHTML = '<div class="empty-state">Failed to load queue data. ' + escapeHTML(error.message) + "</div>";
       queueSummaryEl.innerHTML = "";
       resetDetail();
+      showFeedback(error.message, true);
       lastUpdatedEl.textContent = "Last refresh failed";
     } finally {
       refreshButtonEl.disabled = false;
@@ -96,6 +106,9 @@
     renderTaskList("scheduled", scheduled.tasks || []);
     renderTaskList("retry", retry.tasks || []);
     renderTaskList("archived", archived.tasks || []);
+
+    pauseQueueButtonEl.disabled = !selectedQueue || stats.paused;
+    unpauseQueueButtonEl.disabled = !selectedQueue || !stats.paused;
 
     if (stats.archived > 0) {
       selectedQueueStatusEl.textContent = "Archived tasks present";
@@ -146,7 +159,8 @@
       return;
     }
 
-    const maxSize = Math.max.apply(null, stats.map(function (queue) { return queue.size || 0; }), 1);
+    const sizes = stats.map(function (queue) { return queue.size || 0; });
+    const maxSize = Math.max(1, ...sizes);
 
     queueCardsEl.innerHTML = stats
       .map(function (queue) {
@@ -165,7 +179,8 @@
     Array.prototype.forEach.call(document.querySelectorAll(".queue-card"), function (button) {
       button.addEventListener("click", function () {
         loadQueueDetail(button.dataset.queue).catch(function (error) {
-          selectedQueueStatusEl.textContent = error.message;
+          showFeedback(error.message, true);
+          selectedQueueStatusEl.textContent = "Load failed";
         });
       });
     });
@@ -201,17 +216,80 @@
     }
 
     taskTargets[kind].className = "task-list";
-    taskTargets[kind].innerHTML = tasks.map(renderTaskRow).join("");
+    taskTargets[kind].innerHTML = tasks.map(function (task) {
+      return renderTaskRow(kind, task);
+    }).join("");
+
+    bindTaskActionButtons(kind);
   }
 
-  function renderTaskRow(task) {
+  function renderTaskRow(kind, task) {
     return [
       '<article class="task-row">',
-      '<div class="task-row-header"><span class="task-type">' + escapeHTML(task.type || "unknown") + '</span><span>' + escapeHTML(task.state || "") + "</span></div>",
+      '<div class="task-row-header"><span class="task-type">' + escapeHTML(task.type || "unknown") + '</span><span>' + escapeHTML(task.state || kind) + "</span></div>",
       '<div class="task-row-meta"><span class="task-id">' + escapeHTML(task.id || "n/a") + '</span><span>Retries ' + String(task.retry_count || 0) + "</span></div>",
       '<pre class="task-payload">' + escapeHTML(formatPayload(task.payload)) + "</pre>",
+      renderTaskActions(kind, task),
       "</article>",
     ].join("");
+  }
+
+  function renderTaskActions(kind, task) {
+    const taskID = escapeHTML(task.id || "");
+    const queueName = escapeHTML(selectedQueue);
+    const actions = [];
+
+    if (kind === "scheduled" || kind === "retry" || kind === "archived") {
+      actions.push('<button type="button" class="task-action" data-action="run" data-queue="' + queueName + '" data-task-id="' + taskID + '">Run now</button>');
+    }
+    if (kind === "pending" || kind === "scheduled" || kind === "retry") {
+      actions.push('<button type="button" class="task-action" data-action="archive" data-queue="' + queueName + '" data-task-id="' + taskID + '">Archive</button>');
+    }
+    if (kind !== "active") {
+      actions.push('<button type="button" class="task-action" data-action="delete" data-queue="' + queueName + '" data-task-id="' + taskID + '">Delete</button>');
+    }
+
+    if (actions.length === 0) {
+      return "";
+    }
+
+    return '<div class="task-actions">' + actions.join("") + "</div>";
+  }
+
+  function bindTaskActionButtons() {
+    Array.prototype.forEach.call(document.querySelectorAll(".task-action"), function (button) {
+      button.addEventListener("click", async function () {
+        const action = button.dataset.action;
+        const queueName = button.dataset.queue;
+        const taskID = button.dataset.taskId;
+
+        button.disabled = true;
+        try {
+          if (action === "run") {
+            await fetchJSON("/api/v1/queues/" + encodeURIComponent(queueName) + "/tasks/" + encodeURIComponent(taskID) + "/run", {
+              method: "POST",
+            });
+            showFeedback("Task " + taskID + " moved back to pending.");
+          } else if (action === "archive") {
+            await fetchJSON("/api/v1/queues/" + encodeURIComponent(queueName) + "/tasks/" + encodeURIComponent(taskID) + "/archive", {
+              method: "POST",
+            });
+            showFeedback("Task " + taskID + " archived.");
+          } else if (action === "delete") {
+            await fetchJSON("/api/v1/queues/" + encodeURIComponent(queueName) + "/tasks/" + encodeURIComponent(taskID), {
+              method: "DELETE",
+            });
+            showFeedback("Task " + taskID + " deleted.");
+          }
+
+          await loadDashboard();
+        } catch (error) {
+          showFeedback(error.message, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
   }
 
   function formatPayload(payload) {
@@ -234,12 +312,69 @@
     selectedQueueStatusEl.className = "pill muted";
     queueDetailStatsEl.className = "detail-stats empty-state";
     queueDetailStatsEl.textContent = "Choose a queue to inspect its current state and task lists.";
+    pauseQueueButtonEl.disabled = true;
+    unpauseQueueButtonEl.disabled = true;
 
     Object.keys(taskTargets).forEach(function (kind) {
       taskCountTargets[kind].textContent = "0";
       taskTargets[kind].className = "task-list empty-state";
       taskTargets[kind].textContent = "No tasks loaded.";
     });
+  }
+
+  function showFeedback(message, isError) {
+    feedbackBannerEl.textContent = message;
+    feedbackBannerEl.className = "feedback-banner" + (isError ? " is-error" : "");
+  }
+
+  function readFormData(formElement) {
+    const formData = new FormData(formElement);
+    const output = {};
+
+    formData.forEach(function (value, key) {
+      output[key] = value;
+    });
+
+    if (output.user_id !== undefined) {
+      output.user_id = Number(output.user_id);
+    }
+    if (output.width !== undefined) {
+      output.width = Number(output.width);
+    }
+    if (output.height !== undefined) {
+      output.height = Number(output.height);
+    }
+    if (output.process_in_seconds !== undefined) {
+      output.process_in_seconds = Number(output.process_in_seconds);
+    }
+
+    return output;
+  }
+
+  async function submitTaskForm(formElement, path, successLabel) {
+    const submitButton = formElement.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+
+    try {
+      const payload = readFormData(formElement);
+      const result = await fetchJSON(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      showFeedback(successLabel + " queued successfully. Task ID: " + escapeHTML(result.data.task_id));
+      if (payload.queue) {
+        selectedQueue = payload.queue;
+      }
+      await loadDashboard();
+    } catch (error) {
+      showFeedback(error.message, true);
+    } finally {
+      submitButton.disabled = false;
+    }
   }
 
   function escapeHTML(value) {
@@ -255,6 +390,45 @@
     loadDashboard();
   });
 
+  pauseQueueButtonEl.addEventListener("click", async function () {
+    if (!selectedQueue) {
+      return;
+    }
+    pauseQueueButtonEl.disabled = true;
+    try {
+      await fetchJSON("/api/v1/queues/" + encodeURIComponent(selectedQueue) + "/pause", { method: "POST" });
+      showFeedback("Queue " + selectedQueue + " paused.");
+      await loadDashboard();
+    } catch (error) {
+      showFeedback(error.message, true);
+    }
+  });
+
+  unpauseQueueButtonEl.addEventListener("click", async function () {
+    if (!selectedQueue) {
+      return;
+    }
+    unpauseQueueButtonEl.disabled = true;
+    try {
+      await fetchJSON("/api/v1/queues/" + encodeURIComponent(selectedQueue) + "/unpause", { method: "POST" });
+      showFeedback("Queue " + selectedQueue + " resumed.");
+      await loadDashboard();
+    } catch (error) {
+      showFeedback(error.message, true);
+    }
+  });
+
+  emailFormEl.addEventListener("submit", function (event) {
+    event.preventDefault();
+    submitTaskForm(emailFormEl, "/api/v1/tasks/email", "Email task");
+  });
+
+  imageFormEl.addEventListener("submit", function (event) {
+    event.preventDefault();
+    submitTaskForm(imageFormEl, "/api/v1/tasks/image/resize", "Image task");
+  });
+
+  resetDetail();
   loadDashboard();
   window.setInterval(loadDashboard, 5000);
 })();

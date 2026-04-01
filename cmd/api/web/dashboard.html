@@ -36,10 +36,117 @@
       <section class="panel">
         <div class="panel-header">
           <div>
+            <p class="section-label">Test Console</p>
+            <h2>Enqueue Tasks</h2>
+          </div>
+          <span class="pill">Browser-driven</span>
+        </div>
+
+        <div class="composer-grid">
+          <form id="email-form" class="composer-form">
+            <div class="composer-title-row">
+              <h3>Email Task</h3>
+              <span class="task-type">email:deliver</span>
+            </div>
+
+            <label>
+              User ID
+              <input name="user_id" type="number" min="1" value="42" required>
+            </label>
+            <label>
+              To Address
+              <input name="to_address" type="email" value="user@example.com" required>
+            </label>
+            <label>
+              Template ID
+              <input name="template_id" type="text" value="welcome_email" required>
+            </label>
+            <label>
+              Subject
+              <input name="subject" type="text" value="Welcome from the dashboard" required>
+            </label>
+            <label>
+              Queue
+              <select name="queue">
+                <option value="default">default</option>
+                <option value="critical">critical</option>
+                <option value="low">low</option>
+              </select>
+            </label>
+            <label>
+              Delay (seconds)
+              <input name="process_in_seconds" type="number" min="0" value="0">
+            </label>
+
+            <button type="submit" class="primary-button">Enqueue Email</button>
+          </form>
+
+          <form id="image-form" class="composer-form">
+            <div class="composer-title-row">
+              <h3>Image Task</h3>
+              <span class="task-type">image:resize</span>
+            </div>
+
+            <label>
+              Source URL
+              <input name="source_url" type="url" value="https://images.unsplash.com/photo-1516117172878-fd2c41f4a759" required>
+            </label>
+            <label>
+              Output Bucket
+              <input name="output_bucket" type="text" value="demo-bucket" required>
+            </label>
+            <label>
+              Output Key
+              <input name="output_key" type="text" value="resized/demo-image.webp" required>
+            </label>
+            <label>
+              Width
+              <input name="width" type="number" min="1" max="8000" value="800" required>
+            </label>
+            <label>
+              Height
+              <input name="height" type="number" min="1" max="8000" value="600" required>
+            </label>
+            <label>
+              Format
+              <select name="format">
+                <option value="webp">webp</option>
+                <option value="jpeg">jpeg</option>
+                <option value="png">png</option>
+              </select>
+            </label>
+            <label>
+              Queue
+              <select name="queue">
+                <option value="default">default</option>
+                <option value="critical">critical</option>
+                <option value="low">low</option>
+              </select>
+            </label>
+            <label>
+              Delay (seconds)
+              <input name="process_in_seconds" type="number" min="0" value="0">
+            </label>
+
+            <button type="submit" class="primary-button">Enqueue Image</button>
+          </form>
+        </div>
+
+        <div id="action-feedback" class="feedback-banner hidden" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="panel detail-panel">
+        <div class="panel-header">
+          <div>
             <p class="section-label">Details</p>
             <h2 id="selected-queue-title">Select a queue</h2>
           </div>
           <span id="selected-queue-status" class="pill muted">Waiting</span>
+        </div>
+
+        <div class="queue-controls">
+          <button id="pause-queue-button" class="secondary-button" type="button">Pause Queue</button>
+          <button id="unpause-queue-button" class="secondary-button" type="button">Resume Queue</button>
         </div>
 
         <div id="queue-detail-stats" class="detail-stats empty-state">

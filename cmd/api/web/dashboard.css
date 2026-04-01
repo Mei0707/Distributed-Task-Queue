@@ -89,6 +89,24 @@ h1 {
   filter: brightness(1.04);
 }
 
+.secondary-button {
+  border: 1px solid rgba(36, 29, 23, 0.12);
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  border-color: rgba(0, 109, 119, 0.4);
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .last-updated {
   color: var(--muted);
   font-size: 0.92rem;
@@ -96,7 +114,7 @@ h1 {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 360px) minmax(320px, 480px) minmax(0, 1fr);
   gap: 22px;
 }
 
@@ -110,6 +128,10 @@ h1 {
 
 .panel {
   padding: 22px;
+}
+
+.detail-panel {
+  min-width: 0;
 }
 
 .panel-header,
@@ -164,6 +186,68 @@ h1 {
 .queue-cards {
   display: grid;
   gap: 12px;
+}
+
+.composer-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.composer-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(36, 29, 23, 0.08);
+}
+
+.composer-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.composer-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.composer-form input,
+.composer-form select {
+  width: 100%;
+  border: 1px solid rgba(36, 29, 23, 0.14);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  font: inherit;
+}
+
+.feedback-banner {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(214, 238, 239, 0.95);
+  color: var(--accent);
+}
+
+.feedback-banner.is-error {
+  background: rgba(180, 63, 63, 0.12);
+  color: var(--danger);
+}
+
+.hidden {
+  display: none;
+}
+
+.queue-controls {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 0;
 }
 
 .queue-card {
@@ -255,6 +339,26 @@ h1 {
   font-size: 0.76rem;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.task-action {
+  border: 1px solid rgba(36, 29, 23, 0.12);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.task-action:hover {
+  border-color: rgba(0, 109, 119, 0.4);
 }
 
 .empty-state {

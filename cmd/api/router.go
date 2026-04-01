@@ -51,11 +51,16 @@ func NewRouter(client *asynq.Client, inspector *asynq.Inspector, logger *zap.Log
 		{
 			queues.GET("", inspectHandler.ListQueues)
 			queues.GET("/:queue/stats", inspectHandler.GetQueueStats)
+			queues.POST("/:queue/pause", inspectHandler.PauseQueue)
+			queues.POST("/:queue/unpause", inspectHandler.UnpauseQueue)
 			queues.GET("/:queue/tasks/active", inspectHandler.ListActiveTasks)
 			queues.GET("/:queue/tasks/pending", inspectHandler.ListPendingTasks)
 			queues.GET("/:queue/tasks/scheduled", inspectHandler.ListScheduledTasks)
 			queues.GET("/:queue/tasks/retry", inspectHandler.ListRetryTasks)
 			queues.GET("/:queue/tasks/archived", inspectHandler.ListArchivedTasks) // dead letter queue
+			queues.POST("/:queue/tasks/:task_id/run", inspectHandler.RunTask)
+			queues.POST("/:queue/tasks/:task_id/archive", inspectHandler.ArchiveTask)
+			queues.DELETE("/:queue/tasks/:task_id", inspectHandler.DeleteTask)
 		}
 	}
 

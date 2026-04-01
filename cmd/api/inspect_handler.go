@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
+
+	"github.com/yourname/asynq-task-queue/pkg/response"
 )
 
 // InspectHandler exposes read-only endpoints for monitoring queue health.
@@ -43,16 +45,16 @@ func (h *InspectHandler) GetQueueStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"queue":   info.Queue,
-		"size":    info.Size,
-		"active":  info.Active,
-		"pending": info.Pending,
-		"scheduled": info.Scheduled,
-		"retry":   info.Retry,
-		"archived": info.Archived, // dead letter queue count
+		"queue":           info.Queue,
+		"size":            info.Size,
+		"active":          info.Active,
+		"pending":         info.Pending,
+		"scheduled":       info.Scheduled,
+		"retry":           info.Retry,
+		"archived":        info.Archived, // dead letter queue count
 		"processed_today": info.Processed,
 		"failed_today":    info.Failed,
-		"paused":  info.Paused,
+		"paused":          info.Paused,
 	})
 }
 
@@ -130,10 +132,99 @@ func (h *InspectHandler) ListArchivedTasks(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"tasks":    tasks,
-		"page":     page,
+		"tasks":     tasks,
+		"page":      page,
 		"page_size": size,
-		"note":     "These tasks have exhausted all retries. Manually re-run or delete via Asynqmon.",
+		"note":      "These tasks have exhausted all retries. Manually re-run or delete via Asynqmon.",
+	})
+}
+
+// PauseQueue stops workers from pulling new tasks from the queue.
+// POST /api/v1/queues/:queue/pause
+func (h *InspectHandler) PauseQueue(c *gin.Context) {
+	queue := c.Param("queue")
+	if err := h.inspector.PauseQueue(queue); err != nil {
+		h.logger.Error("Failed to pause queue", zap.String("queue", queue), zap.Error(err))
+		response.BadRequest(c, "Failed to pause queue: "+err.Error())
+		return
+	}
+
+	response.OK(c, gin.H{
+		"queue":  queue,
+		"action": "paused",
+	})
+}
+
+// UnpauseQueue resumes workers pulling tasks from the queue.
+// POST /api/v1/queues/:queue/unpause
+func (h *InspectHandler) UnpauseQueue(c *gin.Context) {
+	queue := c.Param("queue")
+	if err := h.inspector.UnpauseQueue(queue); err != nil {
+		h.logger.Error("Failed to unpause queue", zap.String("queue", queue), zap.Error(err))
+		response.BadRequest(c, "Failed to unpause queue: "+err.Error())
+		return
+	}
+
+	response.OK(c, gin.H{
+		"queue":  queue,
+		"action": "unpaused",
+	})
+}
+
+// RunTask moves a scheduled, retry, or archived task back to pending.
+// POST /api/v1/queues/:queue/tasks/:task_id/run
+func (h *InspectHandler) RunTask(c *gin.Context) {
+	queue := c.Param("queue")
+	taskID := c.Param("task_id")
+
+	if err := h.inspector.RunTask(queue, taskID); err != nil {
+		h.logger.Error("Failed to run task", zap.String("queue", queue), zap.String("task_id", taskID), zap.Error(err))
+		response.BadRequest(c, "Failed to run task: "+err.Error())
+		return
+	}
+
+	response.OK(c, gin.H{
+		"queue":   queue,
+		"task_id": taskID,
+		"action":  "run",
+	})
+}
+
+// ArchiveTask moves a pending, scheduled, or retry task to archived.
+// POST /api/v1/queues/:queue/tasks/:task_id/archive
+func (h *InspectHandler) ArchiveTask(c *gin.Context) {
+	queue := c.Param("queue")
+	taskID := c.Param("task_id")
+
+	if err := h.inspector.ArchiveTask(queue, taskID); err != nil {
+		h.logger.Error("Failed to archive task", zap.String("queue", queue), zap.String("task_id", taskID), zap.Error(err))
+		response.BadRequest(c, "Failed to archive task: "+err.Error())
+		return
+	}
+
+	response.OK(c, gin.H{
+		"queue":   queue,
+		"task_id": taskID,
+		"action":  "archived",
+	})
+}
+
+// DeleteTask removes a pending, scheduled, retry, or archived task.
+// DELETE /api/v1/queues/:queue/tasks/:task_id
+func (h *InspectHandler) DeleteTask(c *gin.Context) {
+	queue := c.Param("queue")
+	taskID := c.Param("task_id")
+
+	if err := h.inspector.DeleteTask(queue, taskID); err != nil {
+		h.logger.Error("Failed to delete task", zap.String("queue", queue), zap.String("task_id", taskID), zap.Error(err))
+		response.BadRequest(c, "Failed to delete task: "+err.Error())
+		return
+	}
+
+	response.OK(c, gin.H{
+		"queue":   queue,
+		"task_id": taskID,
+		"action":  "deleted",
 	})
 }
 
