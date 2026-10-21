@@ -2,16 +2,17 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
-	"github.com/yourname/asynq-task-queue/internal/config"
-	"github.com/yourname/asynq-task-queue/internal/jobs"
-	"github.com/yourname/asynq-task-queue/internal/tasks/email"
-	"github.com/yourname/asynq-task-queue/internal/tasks/image"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/config"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/jobs"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/tasks/email"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/tasks/image"
 )
 
 // Server wraps the asynq.Server and owns all task handler registrations.
@@ -23,6 +24,9 @@ type Server struct {
 
 // New creates a fully configured worker server.
 func New(cfg *config.Config, logger *zap.Logger, store *jobs.Store) (*Server, error) {
+	if err := store.SetLeaseDuration(cfg.Worker.LeaseDuration); err != nil {
+		return nil, err
+	}
 	redisOpt := asynq.RedisClientOpt{
 		Addr:     cfg.Redis.Addr,
 		Password: cfg.Redis.Password,
@@ -31,6 +35,7 @@ func New(cfg *config.Config, logger *zap.Logger, store *jobs.Store) (*Server, er
 
 	asynqCfg := asynq.Config{
 		Concurrency:     cfg.Worker.Concurrency,
+		IsFailure:       func(err error) bool { return !errors.Is(err, jobs.ErrLeaseHeld) },
 		ShutdownTimeout: 30 * time.Second,
 		// Weighted priority: workers pick from queues proportionally to weights.
 		// critical=6 gets ~60%, default=3 gets ~30%, low=1 gets ~10%.

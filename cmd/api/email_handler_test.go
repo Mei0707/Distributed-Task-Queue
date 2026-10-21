@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Mei0707/Distributed-Task-Queue/internal/config"
 	"github.com/gin-gonic/gin"
-	"github.com/yourname/asynq-task-queue/internal/config"
 	"go.uber.org/zap"
 )
 

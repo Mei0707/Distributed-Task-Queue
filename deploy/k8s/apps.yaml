@@ -15,7 +15,7 @@ spec:
   template:
     metadata:
       labels: {app: queue-api, metrics-role: api}
-      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "8080"}
+      annotations: {queue-schema-version: "2", prometheus.io/scrape: "true", prometheus.io/port: "8080"}
     spec:
       securityContext: {runAsUser: 10001, runAsNonRoot: true}
       terminationGracePeriodSeconds: 40
@@ -55,7 +55,7 @@ spec:
   template:
     metadata:
       labels: {app: queue-worker, metrics-role: workers}
-      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "9091"}
+      annotations: {queue-schema-version: "2", prometheus.io/scrape: "true", prometheus.io/port: "9091"}
     spec:
       securityContext: {runAsUser: 10001, runAsNonRoot: true}
       terminationGracePeriodSeconds: 40

@@ -12,11 +12,11 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/yourname/asynq-task-queue/internal/config"
-	"github.com/yourname/asynq-task-queue/internal/jobs"
-	"github.com/yourname/asynq-task-queue/internal/telemetry"
-	"github.com/yourname/asynq-task-queue/internal/worker"
-	"github.com/yourname/asynq-task-queue/pkg/logger"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/config"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/jobs"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/telemetry"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/worker"
+	"github.com/Mei0707/Distributed-Task-Queue/pkg/logger"
 )
 
 // The worker binary is a separate process from the API server.

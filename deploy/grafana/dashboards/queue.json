@@ -272,6 +272,50 @@
           "legendFormat": "{{queue}} {{state}} {{__name__}}"
         }
       ]
+    },
+    {
+      "id": 13,
+      "title": "Reconciliation outcomes",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (outcome) (rate(queue_reconciliations_total[5m]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Execution lease losses",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(queue_execution_lease_losses_total[5m]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
     }
   ]
 }

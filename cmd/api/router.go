@@ -8,10 +8,10 @@ import (
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
-	"github.com/yourname/asynq-task-queue/internal/config"
-	"github.com/yourname/asynq-task-queue/internal/jobs"
-	"github.com/yourname/asynq-task-queue/internal/middleware"
-	"github.com/yourname/asynq-task-queue/internal/telemetry"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/config"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/jobs"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/middleware"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/telemetry"
 )
 
 // NewRouter creates and configures the Gin HTTP router.

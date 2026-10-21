@@ -17,9 +17,11 @@ var Executions = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "queue_ex
 var ExecutionDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "queue_execution_duration_seconds", Help: "Execution latency including database lock wait.", Buckets: prometheus.DefBuckets}, []string{"type"})
 var InFlight = prometheus.NewGauge(prometheus.GaugeOpts{Name: "queue_worker_in_flight", Help: "Active worker executions."})
 var OutboxFailures = prometheus.NewCounter(prometheus.CounterOpts{Name: "queue_outbox_failures_total", Help: "Failed Redis enqueue attempts."})
+var LeaseLosses = prometheus.NewCounter(prometheus.CounterOpts{Name: "queue_execution_lease_losses_total", Help: "Execution heartbeat failures or lost ownership."})
+var Reconciliations = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "queue_reconciliations_total", Help: "Reconciliation observations and repairs."}, []string{"outcome"})
 
 func init() {
-	Registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}), Requests, RequestDuration, Submissions, Executions, ExecutionDuration, InFlight, OutboxFailures)
+	Registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}), Requests, RequestDuration, Submissions, Executions, ExecutionDuration, InFlight, OutboxFailures, LeaseLosses, Reconciliations)
 }
 func Handler() http.Handler { return promhttp.HandlerFor(Registry, promhttp.HandlerOpts{}) }
 

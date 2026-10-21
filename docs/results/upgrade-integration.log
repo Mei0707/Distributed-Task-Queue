@@ -1,0 +1,123 @@
+=== RUN   TestEmailEnqueueValidationError
+=== PAUSE TestEmailEnqueueValidationError
+=== RUN   TestDashboardRoute
+=== PAUSE TestDashboardRoute
+=== RUN   TestIdempotentHTTPSubmissionAndHistory
+--- PASS: TestIdempotentHTTPSubmissionAndHistory (0.12s)
+=== RUN   TestTaskViewContract
+--- PASS: TestTaskViewContract (0.00s)
+=== CONT  TestDashboardRoute
+=== CONT  TestEmailEnqueueValidationError
+--- PASS: TestEmailEnqueueValidationError (0.00s)
+--- PASS: TestDashboardRoute (0.01s)
+PASS
+ok  	github.com/Mei0707/Distributed-Task-Queue/cmd/api	2.103s
+?   	github.com/Mei0707/Distributed-Task-Queue/cmd/loadtest	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/cmd/migrate	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/cmd/worker	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/internal/config	[no test files]
+=== RUN   TestLongWorkReleasesConnectionsAndRenewsLease
+--- PASS: TestLongWorkReleasesConnectionsAndRenewsLease (0.93s)
+=== RUN   TestExpiredWorkerCannotFinalizeAfterReplacement
+--- PASS: TestExpiredWorkerCannotFinalizeAfterReplacement (0.10s)
+=== RUN   TestDurableRetryBudgetAndExplicitRequeue
+--- PASS: TestDurableRetryBudgetAndExplicitRequeue (0.10s)
+=== RUN   TestMigrateVersionOnePreservesHistory
+--- PASS: TestMigrateVersionOnePreservesHistory (0.10s)
+=== RUN   TestRedisDataLossReplaysOnlyUnfinishedJobs
+    reconcile_test.go:168: Redis FLUSHDB: 3 unfinished jobs replayed, live lease preserved, terminal jobs excluded; one effect per completed job
+--- PASS: TestRedisDataLossReplaysOnlyUnfinishedJobs (0.23s)
+=== RUN   TestReconciliationErrorsAndStaleObservations
+--- PASS: TestReconciliationErrorsAndStaleObservations (0.10s)
+=== RUN   TestConcurrentReconciliationIsBoundedAndIdempotent
+--- PASS: TestConcurrentReconciliationIsBoundedAndIdempotent (0.14s)
+=== RUN   TestFinalCrashArchivalIsReconciledAndNotResurrected
+--- PASS: TestFinalCrashArchivalIsReconciledAndNotResurrected (0.09s)
+=== RUN   TestConcurrentAcceptanceAndConflict
+--- PASS: TestConcurrentAcceptanceAndConflict (0.17s)
+=== RUN   TestConcurrentExecutionHasOneEffect
+--- PASS: TestConcurrentExecutionHasOneEffect (0.28s)
+=== RUN   TestRollbackRetryAndCancellation
+--- PASS: TestRollbackRetryAndCancellation (0.15s)
+=== RUN   TestOutboxSurvivesRedisFailureAndLostAcknowledgment
+--- PASS: TestOutboxSurvivesRedisFailureAndLostAcknowledgment (0.12s)
+=== RUN   TestWorkerProcess
+    store_test.go:267: subprocess helper
+--- SKIP: TestWorkerProcess (0.00s)
+=== RUN   TestSIGKILLRecovery
+=== RUN   TestSIGKILLRecovery/before_effect
+=== PAUSE TestSIGKILLRecovery/before_effect
+=== RUN   TestSIGKILLRecovery/after_effect
+=== PAUSE TestSIGKILLRecovery/after_effect
+=== RUN   TestSIGKILLRecovery/before_commit
+=== PAUSE TestSIGKILLRecovery/before_commit
+=== RUN   TestSIGKILLRecovery/after_commit
+=== PAUSE TestSIGKILLRecovery/after_commit
+=== CONT  TestSIGKILLRecovery/before_commit
+=== CONT  TestSIGKILLRecovery/after_effect
+=== CONT  TestSIGKILLRecovery/after_commit
+=== CONT  TestSIGKILLRecovery/before_effect
+asynq: pid=71762 2026/10/21 18:08:44.370746 INFO: Starting processing
+asynq: pid=71763 2026/10/21 18:08:44.465837 INFO: Starting processing
+asynq: pid=71747 2026/10/21 18:08:44.511552 INFO: Starting processing
+asynq: pid=71764 2026/10/21 18:08:44.595403 INFO: Starting processing
+asynq: pid=71747 2026/10/21 18:08:44.648790 INFO: Starting processing
+asynq: pid=71765 2026/10/21 18:08:44.673378 INFO: Starting processing
+asynq: pid=71747 2026/10/21 18:08:44.741152 INFO: Starting processing
+asynq: pid=71747 2026/10/21 18:08:44.806973 INFO: Starting processing
+=== NAME  TestSIGKILLRecovery/before_commit
+    store_test.go:405: SIGKILL phase=before_commit recovery=1m0.369s effects=1 attempts=2
+=== NAME  TestSIGKILLRecovery/after_effect
+    store_test.go:405: SIGKILL phase=after_effect recovery=1m0.6s effects=1 attempts=2
+asynq: pid=71747 2026/10/21 18:09:45.100779 INFO: Starting graceful shutdown
+=== NAME  TestSIGKILLRecovery/before_effect
+    store_test.go:405: SIGKILL phase=before_effect recovery=1m0.309s effects=1 attempts=2
+asynq: pid=71747 2026/10/21 18:09:45.100818 INFO: Starting graceful shutdown
+asynq: pid=71747 2026/10/21 18:09:45.100846 INFO: Starting graceful shutdown
+=== NAME  TestSIGKILLRecovery/after_commit
+    store_test.go:405: SIGKILL phase=after_commit recovery=1m0.466s effects=1 attempts=2
+asynq: pid=71747 2026/10/21 18:09:45.100953 INFO: Starting graceful shutdown
+asynq: pid=71747 2026/10/21 18:09:45.761432 INFO: Waiting for all workers to finish...
+asynq: pid=71747 2026/10/21 18:09:45.761544 INFO: All workers have finished
+asynq: pid=71747 2026/10/21 18:09:45.768538 INFO: Exiting
+asynq: pid=71747 2026/10/21 18:09:45.881253 INFO: Waiting for all workers to finish...
+asynq: pid=71747 2026/10/21 18:09:45.881386 INFO: All workers have finished
+asynq: pid=71747 2026/10/21 18:09:45.886620 INFO: Exiting
+asynq: pid=71747 2026/10/21 18:09:45.984063 INFO: Waiting for all workers to finish...
+asynq: pid=71747 2026/10/21 18:09:45.984144 INFO: All workers have finished
+asynq: pid=71747 2026/10/21 18:09:45.984081 INFO: Waiting for all workers to finish...
+asynq: pid=71747 2026/10/21 18:09:45.984222 INFO: All workers have finished
+asynq: pid=71747 2026/10/21 18:09:45.994894 INFO: Exiting
+asynq: pid=71747 2026/10/21 18:09:45.994917 INFO: Exiting
+--- PASS: TestSIGKILLRecovery (0.00s)
+    --- PASS: TestSIGKILLRecovery/after_effect (61.67s)
+    --- PASS: TestSIGKILLRecovery/after_commit (61.78s)
+    --- PASS: TestSIGKILLRecovery/before_commit (61.89s)
+    --- PASS: TestSIGKILLRecovery/before_effect (61.89s)
+PASS
+ok  	github.com/Mei0707/Distributed-Task-Queue/internal/jobs	66.875s
+?   	github.com/Mei0707/Distributed-Task-Queue/internal/middleware	[no test files]
+=== RUN   TestNewDeliveryTask
+=== PAUSE TestNewDeliveryTask
+=== RUN   TestProcessTaskInvalidPayloadSkipsRetry
+=== PAUSE TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestNewDeliveryTask
+=== CONT  TestProcessTaskInvalidPayloadSkipsRetry
+--- PASS: TestProcessTaskInvalidPayloadSkipsRetry (0.00s)
+--- PASS: TestNewDeliveryTask (0.00s)
+PASS
+ok  	github.com/Mei0707/Distributed-Task-Queue/internal/tasks/email	1.484s
+=== RUN   TestNewResizeTask
+=== PAUSE TestNewResizeTask
+=== RUN   TestProcessTaskInvalidPayloadSkipsRetry
+=== PAUSE TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestNewResizeTask
+--- PASS: TestProcessTaskInvalidPayloadSkipsRetry (0.00s)
+--- PASS: TestNewResizeTask (0.00s)
+PASS
+ok  	github.com/Mei0707/Distributed-Task-Queue/internal/tasks/image	2.967s
+?   	github.com/Mei0707/Distributed-Task-Queue/internal/telemetry	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/internal/worker	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/pkg/logger	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/pkg/response	[no test files]

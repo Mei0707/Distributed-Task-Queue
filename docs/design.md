@@ -24,45 +24,66 @@ PostgreSQL's unique constraint serializes concurrent reservations under the defa
 
 Timeout/retry/retention defaults are snapshotted into each job. They are excluded from the request hash because an operator changing defaults must not turn a previously identical client retry into a conflict. The original job keeps its original options and original schedule.
 
-## Durable outbox
+## Delivery and reconciliation
 
-Every API replica runs a dispatcher. `FOR UPDATE OF o SKIP LOCKED` claims one ready outbox row per transaction. The dispatcher enqueues the job using a stable Redis task ID and acknowledges the outbox row only after Redis accepts it. A Redis task-ID conflict also acknowledges it, since the original message already exists. Failures leave the row undelivered with exponential retry capped at 64 seconds.
+Each API replica runs an outbox dispatcher and a reconciler. The dispatcher uses `FOR UPDATE OF o SKIP LOCKED`, enqueues a stable transport ID, and marks delivery only after Redis accepts it. Its Redis request is bounded to two seconds; failures retain the outbox row and back off up to 64 seconds.
 
-If a dispatcher dies after Redis accepts the task but before the PostgreSQL acknowledgment, its row lock is released and a later dispatcher safely repeats the stable task ID. The original processing time is based on the job's creation timestamp plus its delay, so retries do not push its schedule further into the future.
+Job identity and transport identity are separate. The first generation keeps the original job UUID for compatibility; later generations use `UUID:2`, `UUID:3`, and so on. Repeating an uncertain dispatch uses the same generation and Redis task-ID conflict handling. Replaying a lost delivery advances the generation. An acknowledgment from an old worker then refers to a different Redis ID and cannot remove the replacement message. Workers also reject obsolete generations before running the handler.
 
-This is an at-least-once bridge, not a distributed transaction. It assumes Redis preserves acknowledged writes. AOF with synchronous fsync reduces the data-loss window, but lost Redis volumes or a failover that discards acknowledged writes still require operational reconciliation from PostgreSQL. An acknowledged outbox entry is not automatically replayed after arbitrary Redis data loss.
+The reconciler compares delivered, nonterminal PostgreSQL jobs with their current Redis messages. A short SQL statement claims a fair, bounded batch by advancing `reconcile_at`; it releases its connection before making Redis calls. Each repair locks the job and outbox briefly and rechecks generation, delivery acknowledgment, status, and execution lease. This protects against concurrent dispatchers, reconcilers, completions, cancellations, and operator retries.
 
-## Execution transaction
+- A definitive missing task/queue, or a prematurely completed Redis message, rearms unfinished work in a fresh generation.
+- A live SQL execution lease prevents replay even if Redis has lost its receipt: that computation may still finish successfully.
+- Missing work with an expired lease is fenced off; its attempt becomes interrupted and consumes one durable failure before replay.
+- Redis connection/inspection errors never count as proof that a task is missing.
+- PostgreSQL completed, canceled, and archived jobs are excluded and cannot be resurrected by Redis loss.
+- An archived Redis message synchronizes unfinished SQL history once no live execution lease remains. This covers a final-retry crash that never calls the handler again.
 
-1. Independently insert a `running` attempt, validating the task ID, type, and JSON payload against PostgreSQL.
-2. Start a transaction and lock the job row `FOR UPDATE`.
-3. Mark earlier unfinished attempts `interrupted` once a replacement has acquired the lock.
-4. A completed or canceled job records a `skipped` attempt and returns without calling the handler.
-5. Run the context-aware simulated work and insert one `job_effects` row using the same transaction.
-6. Set job completion and attempt completion, then commit together.
+Replays preserve the absolute `process_at` schedule. An explicit operator Run-now action starts a new generation, moves `process_at` to the current time, and resets the durable retry budget; it cannot override a live lease or a completed/canceled job. Changes to that execution schedule do not change the original request hash or idempotency identity.
 
-`clock_timestamp()` records completion time after processing; transaction-start timestamps would understate latency. A callback failure rolls back its effect, then records the failed attempt and retry/archival state in a separate bounded transaction. If PostgreSQL remains unavailable, failure-history writes can also fail; unfinished attempts are reconciled on subsequent execution. Asynq remains responsible for retry scheduling.
+The defaults are 50 inspections per one-second loop and a 15-second minimum interval per job. Large backlogs or Redis timeouts increase the time to sweep all candidates. A failed/timed-out cycle leaves candidates eligible again at their next check time. No finite recovery time is promised while PostgreSQL/Redis remain unavailable. Completed transport records are not rebuilt after Redis loss; durable history/results remain available through PostgreSQL.
 
-An attempt can remain `running` after a hard crash until redelivery acquires the job lock. The durable job remains `accepted` or `retry` until its effect commits; live execution is observable through attempts, Redis active tasks, and worker in-flight metrics. History describes database outcomes; Redis task state describes transport.
+## Renewable execution leases and fencing
 
-If Asynq archives a lease-expired task after its final allowed retry, there is no subsequent handler invocation to reconcile its unfinished SQL attempt. Inspect Redis archived-task state as well as SQL history in that case; an operator rerun can reconcile the attempt. This lab does not run a general Redis-to-PostgreSQL state reconciler.
+Execution has three phases:
 
-## Guarantee and boundary
+1. **Claim:** in a short transaction, validate the durable job/type/payload and current delivery generation, lock the job, reject a live lease, and allocate a random owner plus a monotonically increasing fence. Record the attempt and commit.
+2. **Prepare:** run expensive work without an open SQL transaction, row lock, or reserved pool connection. Heartbeats renew ownership every third of the lease duration (30 seconds by default). `RecordEffect` stages one JSON result in memory. It performs no database or provider side effect.
+3. **Finalize:** in a short transaction, conditionally update the job only if owner/fence still match, the lease remains valid, and the status is nonterminal. Insert the effect and complete the attempt in that same transaction. Commit atomically.
 
-For this implementation, all durable business effects are PostgreSQL rows:
+Lease comparisons use PostgreSQL `clock_timestamp()` rather than worker clocks or transaction-start timestamps. An expired lease cannot renew itself. Renewal failure cancels the handler context. A handler that ignores cancellation may continue computing, but its expired/superseded fence cannot finalize. Stale failure reporting also cannot overwrite a replacement's ownership or committed completion.
 
-- At most one effect per job follows from the unique effect key plus the serialized completion check.
-- Effect and completion are atomic because they share a transaction.
-- A crash before commit rolls both back; redelivery can execute again.
-- A crash after commit can trigger another delivery, which skips the handler.
-- Cancellation cannot interleave between effect and completion because it updates the same locked job row.
+Cancellation revokes the lease and advances the fence immediately; it does not wait for the computation to finish. A result already committed still wins. Busy duplicate deliveries return a temporary error and do not consume Asynq's retry budget; duplicates received after completion are acknowledged without executing.
 
-This does **not** make arbitrary external operations exactly once. Before implementing real email or storage calls, pass the job UUID to a provider with durable idempotency support, or use a transactional provider outbox and an idempotent receiver. Holding a SQL transaction around an ordinary SMTP send cannot undo a delivered email after a crash.
+`failure_count` is durable across Redis generations. Handler failures and abandoned leases consume the same PostgreSQL retry budget, preventing Redis loss from resetting retries indefinitely. SQL archival rejects automatic execution; only an explicit operator requeue resets the budget. Existing version-one failure history is counted during migration.
 
-Holding the row lock and database connection through the simulated work is an intentional, inspectable lab tradeoff. Long-running production work would generally prepare outside the transaction and finalize bounded database effects inside it. It must still preserve the provider's idempotency/fencing boundary.
+If an attempt crashes, its lease expires and a later claim or reconciliation marks it interrupted. Live execution is visible through lease expiry/fence fields, attempts, Redis active messages, and worker metrics. The durable job retains `accepted`/`retry` until finalization; a full effect is never visible with an uncommitted completion.
+
+## Guarantees and external effects
+
+For this implementation, durable business effects are PostgreSQL rows:
+
+- The unique effect key and fenced finalization allow at most one committed effect per job.
+- Effect, completion, and successful attempt status commit together.
+- A crash during computation leaves no committed effect. A crash during finalization rolls the transaction back.
+- A crash after commit causes redelivery to skip the handler.
+- Redis data loss can recover unfinished jobs without reusing old transport acknowledgments.
+- An expired worker cannot commit after a replacement has taken ownership.
+
+A lease permits overlapping computation after a partition or process pause; it does not magically make an external operation exactly once. Real email/storage/model-service integrations must use provider idempotency keyed by `JobID(ctx)`, or a receiver that atomically rejects older `FencingToken(ctx)` values with the effect. Passing a token that the receiver ignores provides no protection. A local SQL fence cannot undo an SMTP send or an already billed model invocation.
+
+Prepared results are in memory until finalization. A crashed worker loses its intermediate computation and must recompute. Long AI pipelines needing checkpoint/resume should add durable, fenced checkpoints or an artifact store; this upgrade provides ownership/finalization primitives rather than checkpointing or a real AI provider.
+
+## Migration and rollout
+
+Migration 1 is unchanged. Migration 2 adds lease/fence/failure fields, delivery generations, reconciliation scheduling, and an absolute process time while preserving job UUIDs, idempotency keys, payloads, schedules, and history. Unfinished legacy attempts are marked interrupted; recorded failures seed the durable budget.
+
+Stop version-one API/worker processes before migrating. Old workers do not understand fences and must not coexist with the new execution protocol. Apply migrations, then start the new binaries. See [deployment](deployment.md) for the coordinated Docker/Kubernetes steps. Subsequent lease-aware replicas can share the reconciler safely.
 
 ## References
 
 - [Asynq delivery and recovery model](https://github.com/hibiken/asynq)
 - [PostgreSQL row locks](https://www.postgresql.org/docs/17/explicit-locking.html)
 - [PostgreSQL INSERT conflict handling](https://www.postgresql.org/docs/17/sql-insert.html)
+
+- [PostgreSQL wall-clock versus transaction timestamps](https://www.postgresql.org/docs/17/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT)

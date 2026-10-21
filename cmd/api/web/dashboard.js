@@ -236,13 +236,14 @@
 
   function renderTaskActions(kind, task) {
     const taskID = escapeHTML(task.id || "");
+    const jobID = escapeHTML(task.job_id || task.id || "");
     const queueName = escapeHTML(selectedQueue);
     const actions = [];
 
     if (kind === "scheduled" || kind === "retry" || kind === "archived") {
       actions.push('<button type="button" class="task-action" data-action="run" data-queue="' + queueName + '" data-task-id="' + taskID + '">Run now</button>');
     }
-    actions.push('<button type="button" class="task-action" data-action="cancel" data-queue="' + queueName + '" data-task-id="' + taskID + '">Cancel job</button>');
+    actions.push('<button type="button" class="task-action" data-action="cancel" data-queue="' + queueName + '" data-task-id="' + jobID + '">Cancel job</button>');
 
     if (actions.length === 0) {
       return "";

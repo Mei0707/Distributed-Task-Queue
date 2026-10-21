@@ -1,0 +1,196 @@
+ Container distributed-queue-postgres-1  Running
+ Container distributed-queue-redis-1  Running
+Compose can now delegate builds to bake for better performance.
+ To do so, set COMPOSE_BAKE=true.
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [integration internal] load build definition from Dockerfile
+#1 transferring dockerfile: 706B done
+#1 DONE 0.0s
+
+#2 [integration internal] load metadata for docker.io/library/golang:1.26.1-alpine
+#2 DONE 0.6s
+
+#3 [integration internal] load .dockerignore
+#3 transferring context: 113B done
+#3 DONE 0.0s
+
+#4 [integration build 1/6] FROM docker.io/library/golang:1.26.1-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 resolve docker.io/library/golang:1.26.1-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 0.0s done
+#4 DONE 0.0s
+
+#5 [integration internal] load build context
+#5 transferring context: 39.46kB 0.0s done
+#5 DONE 0.0s
+
+#6 [integration build 2/6] WORKDIR /src
+#6 CACHED
+
+#7 [integration build 3/6] COPY go.mod go.sum ./
+#7 CACHED
+
+#8 [integration build 4/6] RUN go mod download
+#8 CACHED
+
+#9 [integration build 5/6] COPY . .
+#9 DONE 0.0s
+
+#10 [integration build 6/6] RUN CGO_ENABLED=0 go build -trimpath -o /out/api ./cmd/api &&     CGO_ENABLED=0 go build -trimpath -o /out/worker ./cmd/worker &&     CGO_ENABLED=0 go build -trimpath -o /out/migrate ./cmd/migrate
+#10 DONE 17.8s
+
+#11 [integration test 1/1] RUN apk add --no-cache gcc musl-dev
+#11 1.099 ( 1/14) Upgrading musl (1.2.5-r21 -> 1.2.5-r24)
+#11 1.287 ( 2/14) Installing libgcc (15.2.0-r2)
+#11 1.311 ( 3/14) Installing jansson (2.14.1-r0)
+#11 1.331 ( 4/14) Installing libstdc++ (15.2.0-r2)
+#11 1.367 ( 5/14) Installing zstd-libs (1.5.7-r2)
+#11 1.397 ( 6/14) Installing binutils (2.45.1-r0)
+#11 1.508 ( 7/14) Installing libgomp (15.2.0-r2)
+#11 1.529 ( 8/14) Installing libatomic (15.2.0-r2)
+#11 1.543 ( 9/14) Installing gmp (6.3.0-r4)
+#11 1.568 (10/14) Installing isl26 (0.26-r1)
+#11 1.595 (11/14) Installing mpfr4 (4.2.2-r0)
+#11 1.615 (12/14) Installing mpc1 (1.3.1-r1)
+#11 1.637 (13/14) Installing gcc (15.2.0-r2)
+#11 2.677 (14/14) Installing musl-dev (1.2.5-r24)
+#11 2.935 Executing busybox-1.37.0-r30.trigger
+#11 2.954 OK: 174.4 MiB in 30 packages
+#11 DONE 3.2s
+
+#12 [integration] exporting to image
+#12 exporting layers
+#12 exporting layers 12.1s done
+#12 exporting manifest sha256:c973c4b71bd591eea582b871b0655ea40ddfea24b9a4c01b525a11f8c9accb8d done
+#12 exporting config sha256:c70e51711b7097001fdc1f1b8cad42885562d6180e2578036edb8303b8df9f21 done
+#12 exporting attestation manifest sha256:bad1ce418e0bcf3530d03d4685d9532d02e18d5469b608f98062631d80a6bda9 0.0s done
+#12 exporting manifest list sha256:466c15c76862e8ecc662290672191ad1b3ea68dbeb2c0196497ff1fea8c83fc8 done
+#12 naming to docker.io/library/distributed-queue-integration:latest done
+#12 unpacking to docker.io/library/distributed-queue-integration:latest
+#12 unpacking to docker.io/library/distributed-queue-integration:latest 7.9s done
+#12 DONE 20.0s
+
+#13 [integration] resolving provenance for metadata file
+#13 DONE 0.0s
+=== RUN   TestEmailEnqueueValidationError
+=== PAUSE TestEmailEnqueueValidationError
+=== RUN   TestDashboardRoute
+=== PAUSE TestDashboardRoute
+=== RUN   TestIdempotentHTTPSubmissionAndHistory
+--- PASS: TestIdempotentHTTPSubmissionAndHistory (0.12s)
+=== RUN   TestTaskViewContract
+--- PASS: TestTaskViewContract (0.00s)
+=== CONT  TestDashboardRoute
+=== CONT  TestEmailEnqueueValidationError
+--- PASS: TestEmailEnqueueValidationError (0.00s)
+--- PASS: TestDashboardRoute (0.00s)
+PASS
+ok  	github.com/Mei0707/Distributed-Task-Queue/cmd/api	1.218s
+?   	github.com/Mei0707/Distributed-Task-Queue/cmd/loadtest	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/cmd/migrate	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/cmd/worker	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/internal/config	[no test files]
+=== RUN   TestLongWorkReleasesConnectionsAndRenewsLease
+--- PASS: TestLongWorkReleasesConnectionsAndRenewsLease (0.98s)
+=== RUN   TestExpiredWorkerCannotFinalizeAfterReplacement
+--- PASS: TestExpiredWorkerCannotFinalizeAfterReplacement (0.12s)
+=== RUN   TestDurableRetryBudgetAndExplicitRequeue
+--- PASS: TestDurableRetryBudgetAndExplicitRequeue (0.11s)
+=== RUN   TestMigrateVersionOnePreservesHistory
+--- PASS: TestMigrateVersionOnePreservesHistory (0.25s)
+=== RUN   TestRedisDataLossReplaysOnlyUnfinishedJobs
+    reconcile_test.go:168: Redis FLUSHDB: 3 unfinished jobs replayed, live lease preserved, terminal jobs excluded; one effect per completed job
+--- PASS: TestRedisDataLossReplaysOnlyUnfinishedJobs (0.21s)
+=== RUN   TestReconciliationErrorsAndStaleObservations
+--- PASS: TestReconciliationErrorsAndStaleObservations (0.10s)
+=== RUN   TestConcurrentReconciliationIsBoundedAndIdempotent
+--- PASS: TestConcurrentReconciliationIsBoundedAndIdempotent (0.32s)
+=== RUN   TestFinalCrashArchivalIsReconciledAndNotResurrected
+--- PASS: TestFinalCrashArchivalIsReconciledAndNotResurrected (0.16s)
+=== RUN   TestConcurrentAcceptanceAndConflict
+--- PASS: TestConcurrentAcceptanceAndConflict (0.53s)
+=== RUN   TestConcurrentExecutionHasOneEffect
+--- PASS: TestConcurrentExecutionHasOneEffect (0.46s)
+=== RUN   TestRollbackRetryAndCancellation
+--- PASS: TestRollbackRetryAndCancellation (0.16s)
+=== RUN   TestOutboxSurvivesRedisFailureAndLostAcknowledgment
+--- PASS: TestOutboxSurvivesRedisFailureAndLostAcknowledgment (0.11s)
+=== RUN   TestWorkerProcess
+    store_test.go:267: subprocess helper
+--- SKIP: TestWorkerProcess (0.00s)
+=== RUN   TestSIGKILLRecovery
+=== RUN   TestSIGKILLRecovery/before_effect
+=== PAUSE TestSIGKILLRecovery/before_effect
+=== RUN   TestSIGKILLRecovery/after_effect
+=== PAUSE TestSIGKILLRecovery/after_effect
+=== RUN   TestSIGKILLRecovery/before_commit
+=== PAUSE TestSIGKILLRecovery/before_commit
+=== RUN   TestSIGKILLRecovery/after_commit
+=== PAUSE TestSIGKILLRecovery/after_commit
+=== CONT  TestSIGKILLRecovery/before_effect
+=== CONT  TestSIGKILLRecovery/after_effect
+=== CONT  TestSIGKILLRecovery/after_commit
+=== CONT  TestSIGKILLRecovery/before_commit
+asynq: pid=7484 2026/10/21 18:12:21.531426 INFO: Starting processing
+asynq: pid=7490 2026/10/21 18:12:21.574449 INFO: Starting processing
+asynq: pid=7442 2026/10/21 18:12:21.589304 INFO: Starting processing
+asynq: pid=7496 2026/10/21 18:12:21.605320 INFO: Starting processing
+asynq: pid=7442 2026/10/21 18:12:21.662876 INFO: Starting processing
+asynq: pid=7507 2026/10/21 18:12:21.672788 INFO: Starting processing
+asynq: pid=7442 2026/10/21 18:12:21.681367 INFO: Starting processing
+asynq: pid=7442 2026/10/21 18:12:21.703846 INFO: Starting processing
+=== NAME  TestSIGKILLRecovery/before_effect
+    store_test.go:405: SIGKILL phase=before_effect recovery=1m0.307s effects=1 attempts=2
+asynq: pid=7442 2026/10/21 18:13:21.951239 INFO: Starting graceful shutdown
+=== NAME  TestSIGKILLRecovery/before_commit
+    store_test.go:405: SIGKILL phase=before_commit recovery=1m0.253s effects=1 attempts=2
+asynq: pid=7442 2026/10/21 18:13:21.951556 INFO: Starting graceful shutdown
+=== NAME  TestSIGKILLRecovery/after_commit
+    store_test.go:405: SIGKILL phase=after_commit recovery=1m0.275s effects=1 attempts=2
+asynq: pid=7442 2026/10/21 18:13:21.951610 INFO: Starting graceful shutdown
+asynq: pid=7442 2026/10/21 18:13:22.777311 INFO: Waiting for all workers to finish...
+asynq: pid=7442 2026/10/21 18:13:22.777384 INFO: All workers have finished
+asynq: pid=7442 2026/10/21 18:13:22.780946 INFO: Exiting
+asynq: pid=7442 2026/10/21 18:13:22.794316 INFO: Waiting for all workers to finish...
+asynq: pid=7442 2026/10/21 18:13:22.794367 INFO: All workers have finished
+asynq: pid=7442 2026/10/21 18:13:22.797558 INFO: Exiting
+asynq: pid=7442 2026/10/21 18:13:22.810243 INFO: Waiting for all workers to finish...
+asynq: pid=7442 2026/10/21 18:13:22.810391 INFO: All workers have finished
+asynq: pid=7442 2026/10/21 18:13:22.821545 INFO: Exiting
+=== NAME  TestSIGKILLRecovery/after_effect
+    store_test.go:405: SIGKILL phase=after_effect recovery=1m1.267s effects=1 attempts=2
+asynq: pid=7442 2026/10/21 18:13:22.841169 INFO: Starting graceful shutdown
+asynq: pid=7442 2026/10/21 18:13:23.729713 INFO: Waiting for all workers to finish...
+asynq: pid=7442 2026/10/21 18:13:23.729796 INFO: All workers have finished
+asynq: pid=7442 2026/10/21 18:13:23.736071 INFO: Exiting
+--- PASS: TestSIGKILLRecovery (0.00s)
+    --- PASS: TestSIGKILLRecovery/before_effect (61.61s)
+    --- PASS: TestSIGKILLRecovery/after_commit (61.62s)
+    --- PASS: TestSIGKILLRecovery/before_commit (61.64s)
+    --- PASS: TestSIGKILLRecovery/after_effect (62.55s)
+PASS
+ok  	github.com/Mei0707/Distributed-Task-Queue/internal/jobs	67.148s
+?   	github.com/Mei0707/Distributed-Task-Queue/internal/middleware	[no test files]
+=== RUN   TestNewDeliveryTask
+=== PAUSE TestNewDeliveryTask
+=== RUN   TestProcessTaskInvalidPayloadSkipsRetry
+=== PAUSE TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestNewDeliveryTask
+--- PASS: TestNewDeliveryTask (0.00s)
+=== CONT  TestProcessTaskInvalidPayloadSkipsRetry
+--- PASS: TestProcessTaskInvalidPayloadSkipsRetry (0.00s)
+PASS
+ok  	github.com/Mei0707/Distributed-Task-Queue/internal/tasks/email	1.088s
+=== RUN   TestNewResizeTask
+=== PAUSE TestNewResizeTask
+=== RUN   TestProcessTaskInvalidPayloadSkipsRetry
+=== PAUSE TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestNewResizeTask
+--- PASS: TestProcessTaskInvalidPayloadSkipsRetry (0.00s)
+--- PASS: TestNewResizeTask (0.00s)
+PASS
+ok  	github.com/Mei0707/Distributed-Task-Queue/internal/tasks/image	1.092s
+?   	github.com/Mei0707/Distributed-Task-Queue/internal/telemetry	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/internal/worker	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/pkg/logger	[no test files]
+?   	github.com/Mei0707/Distributed-Task-Queue/pkg/response	[no test files]

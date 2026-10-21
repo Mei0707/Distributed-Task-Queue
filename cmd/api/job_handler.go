@@ -12,10 +12,10 @@ import (
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
-	"github.com/yourname/asynq-task-queue/internal/config"
-	"github.com/yourname/asynq-task-queue/internal/jobs"
-	"github.com/yourname/asynq-task-queue/internal/telemetry"
-	"github.com/yourname/asynq-task-queue/pkg/response"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/config"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/jobs"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/telemetry"
+	"github.com/Mei0707/Distributed-Task-Queue/pkg/response"
 )
 
 type SubmissionHandler struct {

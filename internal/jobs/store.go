@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-//go:embed schema.sql
+//go:embed schema.sql 002_leases.sql
 var migrations embed.FS
 
 var ErrConflict = errors.New("idempotency key already used for a different request")
@@ -24,7 +24,8 @@ var ErrNotFound = errors.New("job not found")
 type Store struct {
 	Pool *pgxpool.Pool
 	// Tests in this package use hooks to stop a real worker at transaction boundaries.
-	hook func(string)
+	hook          func(string)
+	leaseDuration time.Duration
 }
 
 func Open(ctx context.Context, dsn string, maxConnections int32) (*Store, error) {
@@ -42,7 +43,7 @@ func Open(ctx context.Context, dsn string, maxConnections int32) (*Store, error)
 		pool.Close()
 		return nil, err
 	}
-	return &Store{Pool: pool}, nil
+	return &Store{Pool: pool, leaseDuration: 30 * time.Second}, nil
 }
 
 func (s *Store) Close() { s.Pool.Close() }
@@ -59,17 +60,22 @@ func (s *Store) Migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())"); err != nil {
 		return err
 	}
-	var exists bool
-	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=1)").Scan(&exists); err != nil {
-		return err
-	}
-	if !exists {
-		sql, _ := migrations.ReadFile("schema.sql")
-		if _, err = tx.Exec(ctx, string(sql)); err != nil {
+	for i, file := range []string{"schema.sql", "002_leases.sql"} {
+		var exists bool
+		if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=$1)", i+1).Scan(&exists); err != nil {
 			return err
 		}
-		if _, err = tx.Exec(ctx, "INSERT INTO schema_migrations(version) VALUES(1)"); err != nil {
-			return err
+		if !exists {
+			sql, readErr := migrations.ReadFile(file)
+			if readErr != nil {
+				return readErr
+			}
+			if _, err = tx.Exec(ctx, string(sql)); err != nil {
+				return err
+			}
+			if _, err = tx.Exec(ctx, "INSERT INTO schema_migrations(version) VALUES($1)", i+1); err != nil {
+				return err
+			}
 		}
 	}
 	return tx.Commit(ctx)
@@ -87,20 +93,23 @@ type Submission struct {
 }
 
 type Job struct {
-	ID          string          `json:"id"`
-	Type        string          `json:"type"`
-	Queue       string          `json:"queue"`
-	Status      string          `json:"status"`
-	Payload     json.RawMessage `json:"payload"`
-	LastError   string          `json:"last_error"`
-	CreatedAt   time.Time       `json:"created_at"`
-	CompletedAt *time.Time      `json:"completed_at,omitempty"`
+	ID             string          `json:"id"`
+	Type           string          `json:"type"`
+	Queue          string          `json:"queue"`
+	Status         string          `json:"status"`
+	Payload        json.RawMessage `json:"payload"`
+	LastError      string          `json:"last_error"`
+	CreatedAt      time.Time       `json:"created_at"`
+	CompletedAt    *time.Time      `json:"completed_at,omitempty"`
+	Fence          int64           `json:"fence"`
+	LeaseExpiresAt *time.Time      `json:"lease_expires_at,omitempty"`
+	Failures       int             `json:"failure_count"`
 }
 
-const jobColumns = "id::text, task_type, queue, status, payload, last_error, created_at, completed_at"
+const jobColumns = "id::text, task_type, queue, status, payload, last_error, created_at, completed_at, fence, lease_expires_at, failure_count"
 
 func scanJob(row pgx.Row) (j Job, err error) {
-	err = row.Scan(&j.ID, &j.Type, &j.Queue, &j.Status, &j.Payload, &j.LastError, &j.CreatedAt, &j.CompletedAt)
+	err = row.Scan(&j.ID, &j.Type, &j.Queue, &j.Status, &j.Payload, &j.LastError, &j.CreatedAt, &j.CompletedAt, &j.Fence, &j.LeaseExpiresAt, &j.Failures)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound
 	}
@@ -130,8 +139,8 @@ func (s *Store) Accept(ctx context.Context, in Submission) (Job, bool, error) {
 	}
 	defer tx.Rollback(context.Background())
 	id := uuid.NewString()
-	tag, err := tx.Exec(ctx, `INSERT INTO jobs(id,task_type,idempotency_key,request_hash,payload,queue,delay_seconds,max_retry,timeout_seconds,retention_seconds)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(task_type,idempotency_key) DO NOTHING`, id, in.Type, in.Key, fingerprint, []byte(in.Payload), in.Queue, in.DelaySeconds, in.MaxRetry, in.TimeoutSeconds, in.RetentionSeconds)
+	tag, err := tx.Exec(ctx, `INSERT INTO jobs(id,task_type,idempotency_key,request_hash,payload,queue,delay_seconds,max_retry,timeout_seconds,retention_seconds,process_at)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now()+$7::integer*interval '1 second') ON CONFLICT(task_type,idempotency_key) DO NOTHING`, id, in.Type, in.Key, fingerprint, []byte(in.Payload), in.Queue, in.DelaySeconds, in.MaxRetry, in.TimeoutSeconds, in.RetentionSeconds)
 	if err != nil {
 		return Job{}, false, err
 	}
@@ -184,10 +193,11 @@ type Attempt struct {
 	Error      string     `json:"error"`
 	StartedAt  time.Time  `json:"started_at"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
+	Fence      int64      `json:"fence"`
 }
 
 func (s *Store) Attempts(ctx context.Context, id string) ([]Attempt, error) {
-	rows, err := s.Pool.Query(ctx, "SELECT id,worker_id,status,error,started_at,finished_at FROM job_attempts WHERE job_id=$1 ORDER BY id DESC LIMIT 100", id)
+	rows, err := s.Pool.Query(ctx, "SELECT id,worker_id,status,error,started_at,finished_at,fence FROM job_attempts WHERE job_id=$1 ORDER BY id DESC LIMIT 100", id)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +205,7 @@ func (s *Store) Attempts(ctx context.Context, id string) ([]Attempt, error) {
 	result := make([]Attempt, 0)
 	for rows.Next() {
 		var a Attempt
-		if err = rows.Scan(&a.ID, &a.Worker, &a.Status, &a.Error, &a.StartedAt, &a.FinishedAt); err != nil {
+		if err = rows.Scan(&a.ID, &a.Worker, &a.Status, &a.Error, &a.StartedAt, &a.FinishedAt, &a.Fence); err != nil {
 			return nil, err
 		}
 		result = append(result, a)
@@ -206,9 +216,47 @@ func (s *Store) Attempts(ctx context.Context, id string) ([]Attempt, error) {
 // Cancel serializes against execution. A committed effect always wins over a
 // later cancellation; canceled jobs are acknowledged without executing.
 func (s *Store) Cancel(ctx context.Context, id string) error {
-	tag, err := s.Pool.Exec(ctx, "UPDATE jobs SET status='canceled' WHERE id=$1 AND status NOT IN ('completed','canceled')", id)
-	if err == nil && tag.RowsAffected() == 0 {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	tag, err := tx.Exec(ctx, "UPDATE jobs SET status='canceled',fence=fence+1,lease_owner=NULL,lease_expires_at=NULL WHERE id=$1 AND status NOT IN ('completed','canceled')", id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
 		return ErrConflict
 	}
-	return err
+	if _, err = tx.Exec(ctx, "UPDATE job_attempts SET status='interrupted',finished_at=clock_timestamp(),error='job canceled' WHERE job_id=$1 AND status='running'", id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// Requeue is an explicit operator action that starts a fresh transport generation
+// and retry budget. Completed/canceled jobs and live executions cannot be rerun.
+func (s *Store) Requeue(ctx context.Context, id, queue string) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	tag, err := tx.Exec(ctx, `UPDATE jobs SET status='retry',failure_count=0,last_error='',fence=fence+1,
+ lease_owner=NULL,lease_expires_at=NULL,process_at=clock_timestamp()
+ WHERE id=$1 AND queue=$2 AND status IN ('accepted','retry','archived')
+ AND (lease_expires_at IS NULL OR lease_expires_at<=clock_timestamp())`, id, queue)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrConflict
+	}
+	if _, err = tx.Exec(ctx, "UPDATE job_attempts SET status='interrupted',finished_at=clock_timestamp(),error='operator requeued job' WHERE job_id=$1 AND status='running'", id); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, "UPDATE job_outbox SET generation=generation+1,delivered_at=NULL,available_at=clock_timestamp(),attempts=0,last_error='' WHERE job_id=$1", id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

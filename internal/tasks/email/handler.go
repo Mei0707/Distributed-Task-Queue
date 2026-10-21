@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Mei0707/Distributed-Task-Queue/internal/jobs"
 	"github.com/hibiken/asynq"
-	"github.com/yourname/asynq-task-queue/internal/jobs"
 	"go.uber.org/zap"
 )
 

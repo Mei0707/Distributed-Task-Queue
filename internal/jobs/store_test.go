@@ -133,11 +133,21 @@ func TestConcurrentExecutionHasOneEffect(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			duplicate, err := s.Execute(context.Background(), j.ID, "test", "email:deliver", j.Payload, func(ctx context.Context) error {
-				calls.Add(1)
-				time.Sleep(10 * time.Millisecond)
-				return RecordEffect(ctx, "test", map[string]bool{"ok": true})
-			})
+			var duplicate bool
+			var err error
+			deadline := time.Now().Add(10 * time.Second)
+			for {
+				duplicate, err = s.Execute(context.Background(), j.ID, "test", "email:deliver", j.Payload, func(ctx context.Context) error {
+					calls.Add(1)
+					time.Sleep(10 * time.Millisecond)
+					return RecordEffect(ctx, "test", map[string]bool{"ok": true})
+				})
+				if !errors.Is(err, ErrLeaseHeld) || time.Now().After(deadline) {
+					break
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+
 			if duplicate {
 				skipped.Add(1)
 			}
@@ -295,14 +305,14 @@ func TestSIGKILLRecovery(t *testing.T) {
 	if os.Getenv("TEST_REDIS_ADDR") == "" {
 		t.Skip("set TEST_REDIS_ADDR to run crash tests")
 	}
-	for i, phase := range []string{"before_effect", "after_effect", "after_commit"} {
+	for i, phase := range []string{"before_effect", "after_effect", "before_commit", "after_commit"} {
 		i, phase := i, phase
 		t.Run(phase, func(t *testing.T) {
 			t.Parallel()
 			s := testStore(t)
 			ctx := context.Background()
 			j := accept(t, s)
-			db := 10 + i
+			db := 9 + i
 			addr := os.Getenv("TEST_REDIS_ADDR")
 			opt := asynq.RedisClientOpt{Addr: addr, DB: db}
 			client := asynq.NewClient(opt)

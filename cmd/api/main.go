@@ -12,10 +12,10 @@ import (
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
-	"github.com/yourname/asynq-task-queue/internal/config"
-	"github.com/yourname/asynq-task-queue/internal/jobs"
-	"github.com/yourname/asynq-task-queue/internal/telemetry"
-	"github.com/yourname/asynq-task-queue/pkg/logger"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/config"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/jobs"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/telemetry"
+	"github.com/Mei0707/Distributed-Task-Queue/pkg/logger"
 )
 
 func main() {
@@ -67,6 +67,12 @@ func main() {
 	dispatchDone := make(chan struct{})
 	go func() { defer close(dispatchDone); store.RunDispatcher(dispatchCtx, client, log) }()
 	defer func() { stopDispatch(); <-dispatchDone }()
+	reconcileDone := make(chan struct{})
+	go func() {
+		defer close(reconcileDone)
+		store.RunReconciler(dispatchCtx, inspector, cfg.Reconciliation.BatchSize, cfg.Reconciliation.Interval, log)
+	}()
+	defer func() { stopDispatch(); <-reconcileDone }()
 
 	// --- Build HTTP Router ---
 	router := NewRouter(client, inspector, log, store, cfg)

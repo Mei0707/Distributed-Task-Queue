@@ -13,6 +13,21 @@ docker compose up -d --no-deps --wait --scale worker=1 worker
 
 Workers expose metrics internally on port 9091. Compose deliberately does not bind a fixed worker host port, allowing multiple replicas. Prometheus uses DNS service discovery to scrape each replica. Grafana provisions its Prometheus datasource and dashboard from the repository. Prometheus alert rules are loaded; external notification routing/Alertmanager is not configured.
 
+### Upgrade from version-one execution
+
+The lease protocol requires a coordinated upgrade: old workers do not enforce fencing. Preserve the volumes and stop the old API/workers before applying migration 2:
+
+```sh
+docker compose stop api worker
+docker compose build api
+docker compose run --rm --no-deps migrate
+docker compose up -d --no-deps --force-recreate --wait --scale worker=3 api worker
+```
+
+Migration 2 preserves existing job IDs, idempotency keys, payloads, schedules, and history. It adds ownership/fencing, durable failure counts, delivery generations, and reconciliation scheduling. Do not run an old worker binary against the upgraded database. A new installation can continue to use `make up`.
+
+`WORKER_LEASE_DURATION` defaults to 30 seconds and must be at least three seconds. Renewal runs every third of that duration. `RECONCILIATION_INTERVAL` defaults to 15 seconds per job, and `RECONCILIATION_BATCH_SIZE` to 50 inspections per cycle. Each API replica runs a one-second reconciliation loop; recovery latency also depends on backlog size and Redis response time.
+
 ## Isolated local Kubernetes
 
 The checked-in Kustomization deploys two API replicas and three workers. Use a local cluster rather than an unrelated active context:
@@ -28,6 +43,8 @@ kubectl --kubeconfig /tmp/queue-lab-kubeconfig -n queue-lab get pods
 ```
 
 Every API/worker pod runs the migration as an init container. A transaction-scoped advisory lock serializes concurrent migration runners, and schema versions prevent reapplication. Initial init-container retries while PostgreSQL starts are expected. Resources use an isolated namespace, explicit CPU/memory requests and limits, and persistent volumes for PostgreSQL and Redis. API/worker containers use a non-root UID, read-only filesystem, and no Linux capabilities.
+
+For an existing version-one kind deployment, scale **both** API and worker Deployments to zero and wait for their old pods to terminate before loading/applying the new image. Then apply the updated Kustomization, which restores two APIs and three workers and runs migration 2 from the new init containers. Do not use a mixed old/new rolling upgrade for this protocol transition.
 
 Forward services in separate terminals:
 

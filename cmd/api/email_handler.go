@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	emailtask "github.com/yourname/asynq-task-queue/internal/tasks/email"
-	"github.com/yourname/asynq-task-queue/pkg/response"
+	emailtask "github.com/Mei0707/Distributed-Task-Queue/internal/tasks/email"
+	"github.com/Mei0707/Distributed-Task-Queue/pkg/response"
 )
 
 // EmailHandler handles HTTP requests for email task enqueueing.

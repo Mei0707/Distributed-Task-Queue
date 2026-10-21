@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	imagetask "github.com/yourname/asynq-task-queue/internal/tasks/image"
-	"github.com/yourname/asynq-task-queue/pkg/response"
+	imagetask "github.com/Mei0707/Distributed-Task-Queue/internal/tasks/image"
+	"github.com/Mei0707/Distributed-Task-Queue/pkg/response"
 )
 
 // ImageHandler handles HTTP requests for image processing task enqueueing.

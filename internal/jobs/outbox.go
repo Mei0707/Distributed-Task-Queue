@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 
-	"github.com/yourname/asynq-task-queue/internal/telemetry"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/telemetry"
 )
 
 type Enqueuer interface {
@@ -28,11 +28,12 @@ func (s *Store) DispatchOne(ctx context.Context, client Enqueuer) (bool, error) 
 	var payload []byte
 	var retry, timeout, retention, attempts int
 	var processAt time.Time
+	var generation int64
 	err = tx.QueryRow(ctx, `SELECT j.id::text,j.task_type,j.payload,j.queue,j.max_retry,j.timeout_seconds,j.retention_seconds,
- j.created_at + j.delay_seconds * interval '1 second',o.attempts
+ j.process_at,o.attempts,o.generation
  FROM job_outbox o JOIN jobs j ON j.id=o.job_id
  WHERE o.delivered_at IS NULL AND o.available_at<=now()
- ORDER BY o.available_at FOR UPDATE OF o SKIP LOCKED LIMIT 1`).Scan(&id, &kind, &payload, &queue, &retry, &timeout, &retention, &processAt, &attempts)
+ ORDER BY o.available_at FOR UPDATE OF o SKIP LOCKED LIMIT 1`).Scan(&id, &kind, &payload, &queue, &retry, &timeout, &retention, &processAt, &attempts, &generation)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -41,7 +42,7 @@ func (s *Store) DispatchOne(ctx context.Context, client Enqueuer) (bool, error) 
 	}
 	enqueueCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	_, enqueueErr := client.EnqueueContext(enqueueCtx, asynq.NewTask(kind, payload), asynq.TaskID(id), asynq.Queue(queue), asynq.ProcessAt(processAt), asynq.MaxRetry(retry), asynq.Timeout(time.Duration(timeout)*time.Second), asynq.Retention(time.Duration(retention)*time.Second))
+	_, enqueueErr := client.EnqueueContext(enqueueCtx, asynq.NewTask(kind, payload), asynq.TaskID(TransportID(id, generation)), asynq.Queue(queue), asynq.ProcessAt(processAt), asynq.MaxRetry(retry), asynq.Timeout(time.Duration(timeout)*time.Second), asynq.Retention(time.Duration(retention)*time.Second))
 	if enqueueErr == nil || errors.Is(enqueueErr, asynq.ErrTaskIDConflict) {
 		if s.hook != nil {
 			s.hook("after_enqueue")

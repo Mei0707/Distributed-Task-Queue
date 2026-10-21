@@ -12,11 +12,17 @@ import (
 // Config holds all configuration for the application.
 // Values are loaded from config.yaml or environment variables.
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Queue    QueueConfig    `mapstructure:"queue"`
-	Worker   WorkerConfig   `mapstructure:"worker"`
-	Database DatabaseConfig `mapstructure:"database"`
+	Server         ServerConfig         `mapstructure:"server"`
+	Redis          RedisConfig          `mapstructure:"redis"`
+	Queue          QueueConfig          `mapstructure:"queue"`
+	Worker         WorkerConfig         `mapstructure:"worker"`
+	Database       DatabaseConfig       `mapstructure:"database"`
+	Reconciliation ReconciliationConfig `mapstructure:"reconciliation"`
+}
+
+type ReconciliationConfig struct {
+	Interval  time.Duration `mapstructure:"interval"`
+	BatchSize int           `mapstructure:"batch_size"`
 }
 
 type DatabaseConfig struct {
@@ -45,6 +51,7 @@ type QueueConfig struct {
 }
 
 type WorkerConfig struct {
+	LeaseDuration time.Duration `mapstructure:"lease_duration"`
 	// Total number of concurrent goroutines processing tasks.
 	Concurrency int    `mapstructure:"concurrency"`
 	MetricsPort string `mapstructure:"metrics_port"`
@@ -79,6 +86,9 @@ func Load() (*Config, error) {
 	v.SetDefault("queue.low", 1)
 
 	v.SetDefault("worker.concurrency", 20)
+	v.SetDefault("worker.lease_duration", "30s")
+	v.SetDefault("reconciliation.interval", "15s")
+	v.SetDefault("reconciliation.batch_size", 50)
 	v.SetDefault("worker.metrics_port", "9091")
 	v.SetDefault("database.url", "postgres://queue:queue@localhost:5432/queue?sslmode=disable")
 	v.SetDefault("database.max_connections", 30)
@@ -114,5 +124,8 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("queue weights must be positive")
 	}
 
+	if cfg.Worker.LeaseDuration < 3*time.Second || cfg.Reconciliation.Interval < time.Second || cfg.Reconciliation.BatchSize < 1 || cfg.Reconciliation.BatchSize > 1000 {
+		return nil, fmt.Errorf("invalid lease or reconciliation settings")
+	}
 	return cfg, nil
 }

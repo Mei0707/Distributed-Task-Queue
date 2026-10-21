@@ -10,8 +10,8 @@ import (
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
-	"github.com/yourname/asynq-task-queue/internal/jobs"
-	"github.com/yourname/asynq-task-queue/pkg/response"
+	"github.com/Mei0707/Distributed-Task-Queue/internal/jobs"
+	"github.com/Mei0707/Distributed-Task-Queue/pkg/response"
 )
 
 // InspectHandler exposes queue monitoring and transport-control endpoints.
@@ -180,6 +180,21 @@ func (h *InspectHandler) UnpauseQueue(c *gin.Context) {
 func (h *InspectHandler) RunTask(c *gin.Context) {
 	queue := c.Param("queue")
 	taskID := c.Param("task_id")
+	if h.store != nil {
+		if id, _, parseErr := jobs.ParseTaskID(taskID); parseErr == nil {
+			if _, err := h.store.Get(c.Request.Context(), id); err == nil {
+				if err = h.store.Requeue(c.Request.Context(), id, queue); err != nil {
+					c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+					return
+				}
+				response.OK(c, gin.H{"task_id": id, "action": "run_requested"})
+				return
+			} else if !errors.Is(err, jobs.ErrNotFound) {
+				response.InternalError(c, "Failed to read durable job")
+				return
+			}
+		}
+	}
 
 	if err := h.inspector.RunTask(queue, taskID); err != nil {
 		h.logger.Error("Failed to run task", zap.String("queue", queue), zap.String("task_id", taskID), zap.Error(err))
@@ -244,7 +259,11 @@ func (h *InspectHandler) durableTask(c *gin.Context) bool {
 	if h.store == nil {
 		return false
 	}
-	_, err := h.store.Get(c.Request.Context(), c.Param("task_id"))
+	id, _, parseErr := jobs.ParseTaskID(c.Param("task_id"))
+	if parseErr != nil {
+		return false
+	}
+	_, err := h.store.Get(c.Request.Context(), id)
 	if errors.Is(err, jobs.ErrNotFound) {
 		return false
 	}
@@ -252,7 +271,7 @@ func (h *InspectHandler) durableTask(c *gin.Context) bool {
 		response.InternalError(c, "Failed to check durable job")
 		return true
 	}
-	c.JSON(http.StatusConflict, gin.H{"error": "Use POST /api/v1/jobs/" + c.Param("task_id") + "/cancel to cancel a durable job"})
+	c.JSON(http.StatusConflict, gin.H{"error": "Use POST /api/v1/jobs/" + id + "/cancel to cancel a durable job"})
 	return true
 }
 
@@ -272,7 +291,8 @@ func getPagination(c *gin.Context) (int, int) {
 func taskViews(tasks []*asynq.TaskInfo) []gin.H {
 	result := make([]gin.H, 0, len(tasks))
 	for _, task := range tasks {
-		result = append(result, gin.H{"id": task.ID, "type": task.Type, "state": task.State.String(), "payload": json.RawMessage(task.Payload), "retry_count": task.Retried, "last_error": task.LastErr, "next_process_at": task.NextProcessAt})
+		jobID, _, _ := jobs.ParseTaskID(task.ID)
+		result = append(result, gin.H{"id": task.ID, "job_id": jobID, "type": task.Type, "state": task.State.String(), "payload": json.RawMessage(task.Payload), "retry_count": task.Retried, "last_error": task.LastErr, "next_process_at": task.NextProcessAt})
 	}
 	return result
 }

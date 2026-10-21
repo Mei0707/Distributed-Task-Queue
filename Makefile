@@ -5,7 +5,7 @@ help:
 	@echo ""
 	@echo "  make run-api       Start the REST API server (port 8080)"
 	@echo "  make run-worker    Start the background task worker"
-	@echo "  make build         Compile both binaries to ./bin/"
+	@echo "  make build         Compile API, worker, and migration binaries to ./bin/"
 	@echo "  make tidy          Download and tidy Go modules"
 	@echo "  make test          Run all tests"
 	@echo "  make redis-up      Start Redis in Docker"
@@ -31,7 +31,7 @@ build:
 	go build -o bin/api    ./cmd/api/...
 	go build -o bin/worker ./cmd/worker/...
 	go build -o bin/migrate ./cmd/migrate/...
-	@echo "Binaries: bin/api, bin/worker"
+	@echo "Binaries: bin/api, bin/worker, bin/migrate"
 
 # Download dependencies
 tidy:

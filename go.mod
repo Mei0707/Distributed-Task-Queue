@@ -1,4 +1,4 @@
-module github.com/yourname/asynq-task-queue
+module github.com/Mei0707/Distributed-Task-Queue
 
 go 1.21
 

@@ -8,6 +8,8 @@ Email delivery and image processing remain **simulations**. Their observable eff
 
 Requires Docker Desktop / Docker Engine with Compose. For local Go commands, use Go 1.26.1 (the version used in the Docker build and recorded tests).
 
+For an existing version-one installation, follow the [coordinated upgrade steps](docs/deployment.md#upgrade-from-version-one-execution) first. Old workers must stop before migration 2 because they do not enforce execution fences.
+
 ```sh
 make up
 # equivalent: docker compose up -d --build --scale worker=3
@@ -41,7 +43,7 @@ curl http://localhost:8080/api/v1/jobs/JOB_ID
 curl -X POST http://localhost:8080/api/v1/jobs/JOB_ID/cancel
 ```
 
-The detail endpoint returns the job, its latest 100 attempts, and the simulated effect result. Cancellation serializes against execution; a committed completion wins over a later cancellation. Canceling an executing transaction may wait until it finishes. Transport messages for canceled jobs drain without producing effects.
+The detail endpoint returns the job, its latest 100 attempts, and the simulated effect result. Cancellation serializes against execution; a committed completion wins over a later cancellation. Canceling running work revokes its renewable lease immediately; stale results cannot finalize. Transport messages for canceled jobs drain without producing effects.
 
 Image jobs use `POST /api/v1/tasks/image/resize`:
 
@@ -59,11 +61,11 @@ HTTP -> PostgreSQL transaction: jobs + job_outbox
                   concurrent outbox dispatchers
                   (FOR UPDATE SKIP LOCKED)
                            |
-                  Redis / Asynq task ID = job ID
+                  Redis / Asynq generation-specific task ID
                            |
                      multiple workers
                            |
-           PostgreSQL transaction: lock job -> effect -> completion
+           Short claim -> work + heartbeats -> fenced SQL finalization
 ```
 
 Redis provides at-least-once transport. PostgreSQL is the authority for job identity, cancellation, and committed effects. See [database design and guarantees](docs/design.md) and the [failure matrix](docs/failures.md).
@@ -83,7 +85,7 @@ TEST_DATABASE_URL='postgres://queue:queue@localhost:5432/queue?sslmode=disable' 
 TEST_REDIS_ADDR=localhost:6379 go test ./... -race -count=1 -v
 ```
 
-Integration tests create and remove isolated PostgreSQL schemas. Crash tests use Redis databases 10–12; outbox tests use database 15. Use a dedicated Redis instance and no other test workers on those databases. Recovery tests take about a minute because they wait for Asynq's real lease recovery.
+Integration tests create and remove isolated PostgreSQL schemas. Crash tests use Redis databases 9–12; outbox tests use database 15. The data-loss test reserves empty database 13 and intentionally flushes only that database, refusing to run if it is already nonempty. Use a dedicated Redis instance and no other test workers on those databases. Recovery tests take about a minute because they wait for Asynq's real lease recovery.
 
 The load generator checks accepted IDs, duplicate responses, job completion, and (when `DATABASE_URL` is supplied) independent SQL effect counts. It exits unsuccessfully on errors, missing completions, or mismatched counts. See [recorded results and limitations](docs/performance.md); raw reports are in [docs/results](docs/results).
 
@@ -108,7 +110,11 @@ Source layout:
 - `cmd/worker`: worker lifecycle and metrics/health HTTP server on port 9091
 - `cmd/migrate`: serialized, versioned PostgreSQL migrations
 - `cmd/loadtest`: HTTP workload, latency measurements, drain and effect verification
-- `internal/jobs`: schema, admission transaction, outbox, execution transaction, history, failure tests
+- `internal/jobs`: versioned migrations, admission/outbox, Redis reconciliation, execution leases/fences, history, failure tests
 - `internal/tasks`: context-aware simulated email/image work and transactional effect recording
 - `internal/telemetry`: bounded-label counters and histograms
 - `deploy`: Compose monitoring config and Kubernetes Kustomize resources
+
+The module path is `github.com/Mei0707/Distributed-Task-Queue`. Generated `/api` and `/bin/` binaries are excluded from version control; build with `make build` or the Dockerfile. Deleting tracked binaries removes them from the current tree; historical Git commits still contain their original objects.
+
+Recovery controls: `WORKER_LEASE_DURATION` (default `30s`), `RECONCILIATION_INTERVAL` (`15s`), and `RECONCILIATION_BATCH_SIZE` (`50`). Reconciliation runs in every API replica, repairs missing Redis deliveries, preserves active leases/schedules, and exposes `queue_reconciliations_total`. Workers expose `queue_execution_lease_losses_total`.

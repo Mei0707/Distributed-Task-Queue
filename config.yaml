@@ -20,6 +20,7 @@ queue:
   low: 1
 
 worker:
+  lease_duration: 30s
   metrics_port: "9091"
   # Number of concurrent goroutines processing tasks.
   # Rule of thumb for IO-bound tasks: 2-4x your CPU count.
@@ -38,3 +39,7 @@ worker:
 database:
   url: "postgres://queue:queue@localhost:5432/queue?sslmode=disable"
   max_connections: 30
+
+reconciliation:
+  interval: 15s
+  batch_size: 50

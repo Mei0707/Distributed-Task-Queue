@@ -12,12 +12,13 @@
 | Payload does not match durable identity | Payload validation test | Permanent rejection, no effect |
 | Redis unavailable during dispatch | Outbox retry test | Job remains durable; outbox stays undelivered |
 | Redis accepts, dispatcher fails before SQL acknowledgment | Lost-acknowledgment test | Stable Redis ID reused; outbox eventually acknowledged |
-| Worker SIGKILL before effect | Real subprocess + replacement Asynq worker | Rollback; interrupted attempt; one eventual effect |
-| Worker SIGKILL after effect INSERT, before commit | Real subprocess + replacement Asynq worker | Insert rolls back; one eventual effect |
+| Worker SIGKILL before preparing effect | Real subprocess + replacement Asynq worker | Rollback; interrupted attempt; one eventual effect |
+| Worker SIGKILL after preparing the in-memory effect | Real subprocess + replacement Asynq worker | Prepared result is lost; one eventual effect |
+| Worker SIGKILL after effect INSERT inside finalization, before commit | Real subprocess + replacement Asynq worker | SQL transaction rolls back; one eventual effect |
 | Worker SIGKILL after commit, before Asynq acknowledgment | Real subprocess + replacement Asynq worker | Original effect preserved; redelivery skips handler |
 | PostgreSQL unavailable at admission | HTTP integration test with closed pool | HTTP 503; retry the same key |
 
-The three SIGKILL tests run in parallel against separate Redis databases. A subprocess starts the same execution middleware as the deployed workers, reports that it has reached a transaction boundary, and blocks there. The parent sends a real OS kill signal, inspects committed database effects, starts a replacement Asynq worker, and waits for Redis lease recovery and eventual completion. It does not manually move the task into pending or bypass lease expiry.
+The four SIGKILL tests run in parallel against separate Redis databases. A subprocess starts the same execution middleware as the deployed workers, reports that it has reached a transaction boundary, and blocks there. The parent sends a real OS kill signal, inspects committed database effects, starts a replacement Asynq worker, and waits for Redis lease recovery and eventual completion. It does not manually move the task into pending or bypass lease expiry.
 
 The tests deliberately use a two-second task timeout and short retry delay, but Asynq's real recovery scan still takes roughly one minute. They assert the final Redis completion, durable job status, exactly one effect, and attempt states (`interrupted` then `completed`, or `completed` then `skipped`).
 
@@ -45,3 +46,11 @@ kubectl -n queue-lab rollout status deployment/worker
 ```
 
 The Deployment replaces workers, and Asynq eventually recovers their expired leases. A force-deleted pod is not a reliable way to target a specific commit boundary; the subprocess suite provides deterministic boundary coverage. Never use force deletion on another workload without understanding its effects.
+
+## Lease and reconciliation upgrade verification
+
+`leases_test.go` verifies renewal across multiple lease periods without a held pool connection, prompt cancellation during computation, expired-owner renewal/finalization rejection, protection against late failure writes, durable retry budgets, explicit operator requeue, and version-one migration compatibility.
+
+`reconcile_test.go` intentionally flushes an empty, dedicated Redis database 13 after successful delivery. It verifies that pending/expired/scheduled jobs are replayed into a fresh generation, original schedules and live leases survive, terminal SQL jobs stay terminal, and completed jobs retain exactly one effect. Additional tests cover concurrent bounded reconcilers, Redis outages, completion racing with inspection, and archival after a final-retry worker crash. It never flushes the application Redis database 0; run suites sequentially on the reserved test databases.
+
+The new host and Docker race-enabled suite outputs are recorded separately as `docs/results/upgrade-integration.log` and `docs/results/upgrade-container-integration.log`. The October 20 performance reports describe the earlier implementation and are retained as historical measurements, not claimed as lease-version benchmarks.
