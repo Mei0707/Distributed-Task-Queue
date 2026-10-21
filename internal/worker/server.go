@@ -3,11 +3,13 @@ package worker
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
 	"github.com/yourname/asynq-task-queue/internal/config"
+	"github.com/yourname/asynq-task-queue/internal/jobs"
 	"github.com/yourname/asynq-task-queue/internal/tasks/email"
 	"github.com/yourname/asynq-task-queue/internal/tasks/image"
 )
@@ -20,7 +22,7 @@ type Server struct {
 }
 
 // New creates a fully configured worker server.
-func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
+func New(cfg *config.Config, logger *zap.Logger, store *jobs.Store) (*Server, error) {
 	redisOpt := asynq.RedisClientOpt{
 		Addr:     cfg.Redis.Addr,
 		Password: cfg.Redis.Password,
@@ -28,7 +30,8 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	}
 
 	asynqCfg := asynq.Config{
-		Concurrency: cfg.Worker.Concurrency,
+		Concurrency:     cfg.Worker.Concurrency,
+		ShutdownTimeout: 30 * time.Second,
 		// Weighted priority: workers pick from queues proportionally to weights.
 		// critical=6 gets ~60%, default=3 gets ~30%, low=1 gets ~10%.
 		Queues: map[string]int{
@@ -36,10 +39,10 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 			"default":  cfg.Queue.Default,
 			"low":      cfg.Queue.Low,
 		},
-		// Called when a task exhausts all retries and is archived (dead letter queue).
+		// Asynq invokes this on every failed execution, including transient errors.
 		ErrorHandler: asynq.ErrorHandlerFunc(
 			func(ctx context.Context, task *asynq.Task, err error) {
-				logger.Error("Task permanently failed — moved to dead letter queue",
+				logger.Error("Task execution failed",
 					zap.String("task_type", task.Type()),
 					zap.Error(err),
 				)
@@ -51,6 +54,7 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	srv := asynq.NewServer(redisOpt, asynqCfg)
 
 	mux := asynq.NewServeMux()
+	mux.Use(store.Middleware())
 	mux.Use(taskLoggingMiddleware(logger))
 	mux.Handle(email.TypeEmailDelivery, email.NewHandler(logger))
 	mux.Handle(image.TypeImageResize, image.NewHandler(logger))
@@ -58,13 +62,13 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	return &Server{asynqServer: srv, mux: mux, logger: logger}, nil
 }
 
-// Start begins processing tasks. Blocks until Shutdown() is called.
+// Start begins processing tasks and returns after startup. The caller owns signals.
 func (s *Server) Start() error {
 	s.logger.Info("Starting task worker",
 		zap.String("handlers", fmt.Sprintf("%s, %s",
 			email.TypeEmailDelivery, image.TypeImageResize)),
 	)
-	return s.asynqServer.Run(s.mux)
+	return s.asynqServer.Start(s.mux)
 }
 
 // Shutdown gracefully stops — in-flight tasks finish before process exits.

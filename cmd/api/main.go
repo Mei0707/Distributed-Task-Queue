@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/yourname/asynq-task-queue/internal/config"
+	"github.com/yourname/asynq-task-queue/internal/jobs"
+	"github.com/yourname/asynq-task-queue/internal/telemetry"
 	"github.com/yourname/asynq-task-queue/pkg/logger"
 )
 
@@ -39,9 +41,10 @@ func main() {
 
 	// --- Redis Connection (shared by Client and Inspector) ---
 	redisOpt := asynq.RedisClientOpt{
-		Addr:     cfg.Redis.Addr,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
+		Addr:        cfg.Redis.Addr,
+		Password:    cfg.Redis.Password,
+		DB:          cfg.Redis.DB,
+		DialTimeout: time.Second, ReadTimeout: time.Second, WriteTimeout: time.Second,
 	}
 
 	// asynq.Client: enqueues tasks into Redis queues
@@ -51,9 +54,22 @@ func main() {
 	// asynq.Inspector: reads queue/task state for monitoring endpoints
 	inspector := asynq.NewInspector(redisOpt)
 	defer inspector.Close()
+	startupCtx, startupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	store, err := jobs.Open(startupCtx, cfg.Database.URL, cfg.Database.MaxConnections)
+	startupCancel()
+	if err != nil {
+		log.Fatal("Failed to open job database", zap.Error(err))
+	}
+	defer store.Close()
+	telemetry.Registry.MustRegister(jobs.Collector{Store: store})
+	telemetry.Registry.MustRegister(transportCollector{inspector: inspector})
+	dispatchCtx, stopDispatch := context.WithCancel(context.Background())
+	dispatchDone := make(chan struct{})
+	go func() { defer close(dispatchDone); store.RunDispatcher(dispatchCtx, client, log) }()
+	defer func() { stopDispatch(); <-dispatchDone }()
 
 	// --- Build HTTP Router ---
-	router := NewRouter(client, inspector, log)
+	router := NewRouter(client, inspector, log, store, cfg)
 
 	// --- HTTP Server with graceful shutdown ---
 	srv := &http.Server{

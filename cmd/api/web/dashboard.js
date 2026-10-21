@@ -242,12 +242,7 @@
     if (kind === "scheduled" || kind === "retry" || kind === "archived") {
       actions.push('<button type="button" class="task-action" data-action="run" data-queue="' + queueName + '" data-task-id="' + taskID + '">Run now</button>');
     }
-    if (kind === "pending" || kind === "scheduled" || kind === "retry") {
-      actions.push('<button type="button" class="task-action" data-action="archive" data-queue="' + queueName + '" data-task-id="' + taskID + '">Archive</button>');
-    }
-    if (kind !== "active") {
-      actions.push('<button type="button" class="task-action" data-action="delete" data-queue="' + queueName + '" data-task-id="' + taskID + '">Delete</button>');
-    }
+    actions.push('<button type="button" class="task-action" data-action="cancel" data-queue="' + queueName + '" data-task-id="' + taskID + '">Cancel job</button>');
 
     if (actions.length === 0) {
       return "";
@@ -256,8 +251,8 @@
     return '<div class="task-actions">' + actions.join("") + "</div>";
   }
 
-  function bindTaskActionButtons() {
-    Array.prototype.forEach.call(document.querySelectorAll(".task-action"), function (button) {
+  function bindTaskActionButtons(kind) {
+    Array.prototype.forEach.call(taskTargets[kind].querySelectorAll(".task-action"), function (button) {
       button.addEventListener("click", async function () {
         const action = button.dataset.action;
         const queueName = button.dataset.queue;
@@ -270,16 +265,9 @@
               method: "POST",
             });
             showFeedback("Task " + taskID + " moved back to pending.");
-          } else if (action === "archive") {
-            await fetchJSON("/api/v1/queues/" + encodeURIComponent(queueName) + "/tasks/" + encodeURIComponent(taskID) + "/archive", {
-              method: "POST",
-            });
-            showFeedback("Task " + taskID + " archived.");
-          } else if (action === "delete") {
-            await fetchJSON("/api/v1/queues/" + encodeURIComponent(queueName) + "/tasks/" + encodeURIComponent(taskID), {
-              method: "DELETE",
-            });
-            showFeedback("Task " + taskID + " deleted.");
+          } else if (action === "cancel") {
+            await fetchJSON("/api/v1/jobs/" + encodeURIComponent(taskID) + "/cancel", {method:"POST"});
+            showFeedback("Job " + taskID + " canceled.");
           }
 
           await loadDashboard();
@@ -360,11 +348,13 @@
       const result = await fetchJSON(path, {
         method: "POST",
         headers: {
+          "Idempotency-Key": formElement.dataset.idempotencyKey || (formElement.dataset.idempotencyKey = crypto.randomUUID()),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
 
+      delete formElement.dataset.idempotencyKey;
       showFeedback(successLabel + " queued successfully. Task ID: " + escapeHTML(result.data.task_id));
       if (payload.queue) {
         selectedQueue = payload.queue;
@@ -428,6 +418,7 @@
     submitTaskForm(imageFormEl, "/api/v1/tasks/image/resize", "Image task");
   });
 
+  [emailFormEl,imageFormEl].forEach(function(form) {form.addEventListener("input",function(){delete form.dataset.idempotencyKey;});});
   resetDetail();
   loadDashboard();
   window.setInterval(loadDashboard, 5000);

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/yourname/asynq-task-queue/internal/jobs"
 	"go.uber.org/zap"
 )
 
@@ -56,7 +57,7 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 
 	h.logger.Info("Processing image resize task",
-		zap.String("task_id", t.ResultWriter().TaskID()),
+		zap.String("task_id", taskID(ctx)),
 		zap.String("source", p.SourceURL),
 		zap.Int("width", p.Width),
 		zap.Int("height", p.Height),
@@ -85,11 +86,8 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("image: upload failed: %w", err)
 	}
 
-	// Write result with output location
-	result := fmt.Sprintf(`{"output_bucket": "%s", "output_key": "%s", "processed_at": "%s"}`,
-		p.OutputBucket, p.OutputKey, time.Now().UTC().Format(time.RFC3339))
-	if _, err := t.ResultWriter().Write([]byte(result)); err != nil {
-		h.logger.Warn("Failed to write task result", zap.Error(err))
+	if err := jobs.RecordEffect(ctx, "simulated_image_artifact", map[string]any{"output_bucket": p.OutputBucket, "output_key": p.OutputKey, "processed_at": time.Now().UTC(), "simulated": true}); err != nil {
+		return err
 	}
 
 	h.logger.Info("Image resized and uploaded successfully",
@@ -101,28 +99,40 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 
 // --- Stubs for real implementation ---
 
-func downloadImage(_ context.Context, url string) error {
+func downloadImage(ctx context.Context, url string) error {
 	// TODO: Use http.Get or AWS S3 SDK to download
 	_ = url
-	time.Sleep(200 * time.Millisecond) // simulate download
-	return nil
+	return wait(ctx, 200*time.Millisecond)
 }
 
-func resizeImage(_ context.Context, p ResizePayload) (string, error) {
+func resizeImage(ctx context.Context, p ResizePayload) (string, error) {
 	// TODO: Use github.com/disintegration/imaging or similar
 	// img, err := imaging.Open(localPath)
 	// resized := imaging.Resize(img, p.Width, p.Height, imaging.Lanczos)
 	// imaging.Save(resized, outputPath)
 	_ = p
-	time.Sleep(500 * time.Millisecond) // simulate processing
+	if err := wait(ctx, 500*time.Millisecond); err != nil {
+		return "", err
+	}
 	return "/tmp/output.jpg", nil
 }
 
-func uploadImage(_ context.Context, localPath, bucket, key string) error {
+func uploadImage(ctx context.Context, localPath, bucket, key string) error {
 	// TODO: Use AWS SDK v2
 	// uploader := manager.NewUploader(s3Client)
 	// uploader.Upload(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: file})
 	_, _, _ = localPath, bucket, key
-	time.Sleep(300 * time.Millisecond) // simulate upload
-	return nil
+	return wait(ctx, 300*time.Millisecond)
+}
+func taskID(ctx context.Context) string { id, _ := asynq.GetTaskID(ctx); return id }
+
+func wait(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

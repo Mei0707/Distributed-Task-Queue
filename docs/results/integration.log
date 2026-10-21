@@ -1,0 +1,94 @@
+=== RUN   TestEmailEnqueueValidationError
+=== PAUSE TestEmailEnqueueValidationError
+=== RUN   TestDashboardRoute
+=== PAUSE TestDashboardRoute
+=== RUN   TestIdempotentHTTPSubmissionAndHistory
+--- PASS: TestIdempotentHTTPSubmissionAndHistory (0.18s)
+=== RUN   TestTaskViewContract
+--- PASS: TestTaskViewContract (0.00s)
+=== CONT  TestDashboardRoute
+=== CONT  TestEmailEnqueueValidationError
+--- PASS: TestEmailEnqueueValidationError (0.00s)
+--- PASS: TestDashboardRoute (0.02s)
+PASS
+ok  	github.com/yourname/asynq-task-queue/cmd/api	2.932s
+?   	github.com/yourname/asynq-task-queue/cmd/loadtest	[no test files]
+?   	github.com/yourname/asynq-task-queue/cmd/migrate	[no test files]
+?   	github.com/yourname/asynq-task-queue/cmd/worker	[no test files]
+?   	github.com/yourname/asynq-task-queue/internal/config	[no test files]
+=== RUN   TestConcurrentAcceptanceAndConflict
+--- PASS: TestConcurrentAcceptanceAndConflict (0.33s)
+=== RUN   TestConcurrentExecutionHasOneEffect
+--- PASS: TestConcurrentExecutionHasOneEffect (0.40s)
+=== RUN   TestRollbackRetryAndCancellation
+--- PASS: TestRollbackRetryAndCancellation (0.22s)
+=== RUN   TestOutboxSurvivesRedisFailureAndLostAcknowledgment
+--- PASS: TestOutboxSurvivesRedisFailureAndLostAcknowledgment (0.29s)
+=== RUN   TestWorkerProcess
+    store_test.go:257: subprocess helper
+--- SKIP: TestWorkerProcess (0.00s)
+=== RUN   TestSIGKILLRecovery
+=== RUN   TestSIGKILLRecovery/before_effect
+=== PAUSE TestSIGKILLRecovery/before_effect
+=== RUN   TestSIGKILLRecovery/after_effect
+=== PAUSE TestSIGKILLRecovery/after_effect
+=== RUN   TestSIGKILLRecovery/after_commit
+=== PAUSE TestSIGKILLRecovery/after_commit
+=== CONT  TestSIGKILLRecovery/after_commit
+=== CONT  TestSIGKILLRecovery/after_effect
+=== CONT  TestSIGKILLRecovery/before_effect
+asynq: pid=36154 2026/10/20 23:51:28.574854 INFO: Starting processing
+asynq: pid=36155 2026/10/20 23:51:28.618448 INFO: Starting processing
+asynq: pid=36146 2026/10/20 23:51:28.640720 INFO: Starting processing
+asynq: pid=36156 2026/10/20 23:51:28.653615 INFO: Starting processing
+asynq: pid=36146 2026/10/20 23:51:28.667773 INFO: Starting processing
+asynq: pid=36146 2026/10/20 23:51:28.706705 INFO: Starting processing
+=== NAME  TestSIGKILLRecovery/after_commit
+    store_test.go:395: SIGKILL phase=after_commit recovery=1m0.197s effects=1 attempts=2
+=== NAME  TestSIGKILLRecovery/after_effect
+asynq: pid=36146 2026/10/20 23:52:28.899740 INFO: Starting graceful shutdown
+    store_test.go:395: SIGKILL phase=after_effect recovery=1m0.264s effects=1 attempts=2
+=== NAME  TestSIGKILLRecovery/before_effect
+asynq: pid=36146 2026/10/20 23:52:28.899780 INFO: Starting graceful shutdown
+    store_test.go:395: SIGKILL phase=before_effect recovery=1m0.238s effects=1 attempts=2
+asynq: pid=36146 2026/10/20 23:52:28.899816 INFO: Starting graceful shutdown
+asynq: pid=36146 2026/10/20 23:52:29.805371 INFO: Waiting for all workers to finish...
+asynq: pid=36146 2026/10/20 23:52:29.805494 INFO: All workers have finished
+asynq: pid=36146 2026/10/20 23:52:29.813571 INFO: Exiting
+asynq: pid=36146 2026/10/20 23:52:29.859821 INFO: Waiting for all workers to finish...
+asynq: pid=36146 2026/10/20 23:52:29.859894 INFO: All workers have finished
+asynq: pid=36146 2026/10/20 23:52:29.859829 INFO: Waiting for all workers to finish...
+asynq: pid=36146 2026/10/20 23:52:29.859974 INFO: All workers have finished
+asynq: pid=36146 2026/10/20 23:52:29.865942 INFO: Exiting
+asynq: pid=36146 2026/10/20 23:52:29.865943 INFO: Exiting
+--- PASS: TestSIGKILLRecovery (0.00s)
+    --- PASS: TestSIGKILLRecovery/after_effect (61.47s)
+    --- PASS: TestSIGKILLRecovery/before_effect (61.51s)
+    --- PASS: TestSIGKILLRecovery/after_commit (61.51s)
+PASS
+ok  	github.com/yourname/asynq-task-queue/internal/jobs	64.530s
+?   	github.com/yourname/asynq-task-queue/internal/middleware	[no test files]
+=== RUN   TestNewDeliveryTask
+=== PAUSE TestNewDeliveryTask
+=== RUN   TestProcessTaskInvalidPayloadSkipsRetry
+=== PAUSE TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestNewDeliveryTask
+--- PASS: TestProcessTaskInvalidPayloadSkipsRetry (0.00s)
+--- PASS: TestNewDeliveryTask (0.00s)
+PASS
+ok  	github.com/yourname/asynq-task-queue/internal/tasks/email	3.090s
+=== RUN   TestNewResizeTask
+=== PAUSE TestNewResizeTask
+=== RUN   TestProcessTaskInvalidPayloadSkipsRetry
+=== PAUSE TestProcessTaskInvalidPayloadSkipsRetry
+=== CONT  TestNewResizeTask
+=== CONT  TestProcessTaskInvalidPayloadSkipsRetry
+--- PASS: TestProcessTaskInvalidPayloadSkipsRetry (0.00s)
+--- PASS: TestNewResizeTask (0.00s)
+PASS
+ok  	github.com/yourname/asynq-task-queue/internal/tasks/image	2.168s
+?   	github.com/yourname/asynq-task-queue/internal/telemetry	[no test files]
+?   	github.com/yourname/asynq-task-queue/internal/worker	[no test files]
+?   	github.com/yourname/asynq-task-queue/pkg/logger	[no test files]
+?   	github.com/yourname/asynq-task-queue/pkg/response	[no test files]

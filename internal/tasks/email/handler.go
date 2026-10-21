@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/yourname/asynq-task-queue/internal/jobs"
 	"go.uber.org/zap"
 )
 
@@ -62,7 +63,7 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	}
 
 	h.logger.Info("Processing email delivery task",
-		zap.String("task_id", t.ResultWriter().TaskID()),
+		zap.String("task_id", taskID(ctx)),
 		zap.Int("user_id", p.UserID),
 		zap.String("to", p.ToAddress),
 		zap.String("template", p.TemplateID),
@@ -82,11 +83,8 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("email: delivery failed for user %d: %w", p.UserID, err)
 	}
 
-	// 4. Write result metadata (visible in Asynqmon Web UI)
-	result := fmt.Sprintf(`{"delivered_to": "%s", "delivered_at": "%s"}`,
-		p.ToAddress, time.Now().UTC().Format(time.RFC3339))
-	if _, err := t.ResultWriter().Write([]byte(result)); err != nil {
-		h.logger.Warn("Failed to write task result", zap.Error(err))
+	if err := jobs.RecordEffect(ctx, "simulated_email_delivery", map[string]any{"delivered_to": p.ToAddress, "delivered_at": time.Now().UTC(), "simulated": true}); err != nil {
+		return err
 	}
 
 	h.logger.Info("Email delivered successfully",
@@ -98,7 +96,7 @@ func (h *Handler) ProcessTask(ctx context.Context, t *asynq.Task) error {
 }
 
 // sendEmail is a stub for your real email provider integration.
-func sendEmail(_ context.Context, p DeliveryPayload) error {
+func sendEmail(ctx context.Context, p DeliveryPayload) error {
 	// TODO: Replace with real SMTP/API call
 	// Example with SendGrid:
 	//   client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
@@ -106,7 +104,17 @@ func sendEmail(_ context.Context, p DeliveryPayload) error {
 	//   _, err := client.Send(message)
 
 	// Simulate work
-	time.Sleep(100 * time.Millisecond)
+	return wait(ctx, 100*time.Millisecond)
+}
+func taskID(ctx context.Context) string { id, _ := asynq.GetTaskID(ctx); return id }
 
-	return nil
+func wait(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

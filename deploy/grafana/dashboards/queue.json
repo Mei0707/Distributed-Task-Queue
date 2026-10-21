@@ -1,0 +1,277 @@
+{
+  "uid": "distributed-queue",
+  "title": "Distributed Queue",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Submission rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(queue_submissions_total[1m]))",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Worker execution rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (outcome) (rate(queue_executions_total[1m]))",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "HTTP p95 latency",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95,sum by (le) (rate(queue_http_request_duration_seconds_bucket{route=~\"/api/v1/tasks/.*\"}[5m])))",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Execution p95 latency",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95,sum by (le,type) (rate(queue_execution_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Durable job history",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (status) (queue_jobs)",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Outbox backlog",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(queue_outbox_pending)",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Oldest outbox age",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(queue_outbox_oldest_seconds)",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Active executions",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(queue_worker_in_flight)",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Healthy workers",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(up{job=\"workers\"})",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Redis dispatch failures",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(queue_outbox_failures_total[5m]))",
+          "legendFormat": "{{type}} {{outcome}} {{result}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Redis task states",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (queue,state) (queue_transport_tasks)",
+          "legendFormat": "{{queue}} {{state}} {{__name__}}"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Dependency health",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (__name__) ({__name__=~\"queue_database_up|queue_redis_up\"})",
+          "legendFormat": "{{queue}} {{state}} {{__name__}}"
+        }
+      ]
+    }
+  ]
+}

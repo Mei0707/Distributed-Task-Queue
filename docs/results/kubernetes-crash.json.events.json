@@ -1,0 +1,9 @@
+{
+  "started_at": "2026-10-20T23:55:29.403673+00:00",
+  "killed_pod": "worker-74476d4bd-ctpns",
+  "kill_requested_at": "2026-10-20T23:55:30.595439+00:00",
+  "crash_method": "containerd SIGKILL through the isolated kind node",
+  "container_id": "84aa9ca87621ff516d72447d68790911a2d88c646d2b3c7906904304ac9a07b8",
+  "attempt_history": "completed|2000\ninterrupted|12",
+  "finished_at": "2026-10-20T23:57:15.253836+00:00"
+}

@@ -20,6 +20,7 @@ queue:
   low: 1
 
 worker:
+  metrics_port: "9091"
   # Number of concurrent goroutines processing tasks.
   # Rule of thumb for IO-bound tasks: 2-4x your CPU count.
   # For CPU-bound tasks (image processing): match your CPU count.
@@ -33,3 +34,7 @@ worker:
 
   # How long completed tasks are kept in Redis for inspection.
   retention_ttl: 72h
+
+database:
+  url: "postgres://queue:queue@localhost:5432/queue?sslmode=disable"
+  max_connections: 30

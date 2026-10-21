@@ -1,0 +1,102 @@
+{
+  "captured_at": "2026-10-20",
+  "host_platform": "Darwin/arm64",
+  "docker": {
+    "Client": {
+      "Version": "28.0.4",
+      "ApiVersion": "1.48",
+      "DefaultAPIVersion": "1.48",
+      "GitCommit": "b8034c0",
+      "GoVersion": "go1.23.7",
+      "Os": "darwin",
+      "Arch": "arm64",
+      "BuildTime": "Tue Mar 25 15:06:09 2025",
+      "Context": "desktop-linux"
+    },
+    "Server": {
+      "Platform": {
+        "Name": "Docker Desktop 4.40.0 (187762)"
+      },
+      "Components": [
+        {
+          "Name": "Engine",
+          "Version": "28.0.4",
+          "Details": {
+            "ApiVersion": "1.48",
+            "Arch": "arm64",
+            "BuildTime": "Tue Mar 25 15:07:18 2025",
+            "Experimental": "false",
+            "GitCommit": "6430e49",
+            "GoVersion": "go1.23.7",
+            "KernelVersion": "6.10.14-linuxkit",
+            "MinAPIVersion": "1.24",
+            "Os": "linux"
+          }
+        },
+        {
+          "Name": "containerd",
+          "Version": "1.7.26",
+          "Details": {
+            "GitCommit": "753481ec61c7c8955a23d6ff7bc8e4daed455734"
+          }
+        },
+        {
+          "Name": "runc",
+          "Version": "1.2.5",
+          "Details": {
+            "GitCommit": "v1.2.5-0-g59923ef"
+          }
+        },
+        {
+          "Name": "docker-init",
+          "Version": "0.19.0",
+          "Details": {
+            "GitCommit": "de40ad0"
+          }
+        }
+      ],
+      "Version": "28.0.4",
+      "ApiVersion": "1.48",
+      "MinAPIVersion": "1.24",
+      "GitCommit": "6430e49",
+      "GoVersion": "go1.23.7",
+      "Os": "linux",
+      "Arch": "arm64",
+      "KernelVersion": "6.10.14-linuxkit",
+      "BuildTime": "2025-03-25T15:07:18.000000000+00:00"
+    }
+  },
+  "docker_resources": "8218034176 10",
+  "application_image": "sha256:87b49ef6592fa2d57397b5d3fd464ef44845b5be5759e0af66c41e4b5ed237a7",
+  "postgres_image": [
+    "postgres@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94"
+  ],
+  "redis_image": [
+    "redis@sha256:bb186d083732f669da90be8b0f975a37812b15e913465bb14d845db72a4e3e08"
+  ],
+  "kubernetes": {
+    "clientVersion": {
+      "major": "1",
+      "minor": "32",
+      "gitVersion": "v1.32.2",
+      "gitCommit": "67a30c0adcf52bd3f56ff0893ce19966be12991f",
+      "gitTreeState": "clean",
+      "buildDate": "2025-02-12T21:26:09Z",
+      "goVersion": "go1.23.6",
+      "compiler": "gc",
+      "platform": "darwin/arm64"
+    },
+    "kustomizeVersion": "v5.5.0",
+    "serverVersion": {
+      "major": "1",
+      "minor": "32",
+      "gitVersion": "v1.32.2",
+      "gitCommit": "67a30c0adcf52bd3f56ff0893ce19966be12991f",
+      "gitTreeState": "clean",
+      "buildDate": "2025-02-12T21:19:47Z",
+      "goVersion": "go1.23.6",
+      "compiler": "gc",
+      "platform": "linux/arm64"
+    }
+  }
+}

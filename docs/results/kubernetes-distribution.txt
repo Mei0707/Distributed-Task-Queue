@@ -1,0 +1,7 @@
+       worker_id        | count 
+------------------------+-------
+ worker-74476d4bd-ctpns |    67
+ worker-74476d4bd-dbk7r |    68
+ worker-74476d4bd-w4p7b |    65
+(3 rows)
+

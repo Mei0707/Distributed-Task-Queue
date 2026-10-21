@@ -1,0 +1,9 @@
+NAME                             IMAGE                     COMMAND                  SERVICE      CREATED          STATUS                    PORTS
+distributed-queue-api-1          distributed-queue:local   "/app/api"               api          8 minutes ago    Up 8 minutes (healthy)    127.0.0.1:8080->8080/tcp, 9091/tcp
+distributed-queue-grafana-1      grafana/grafana:11.6.0    "/run.sh"                grafana      8 minutes ago    Up 8 minutes              127.0.0.1:3000->3000/tcp
+distributed-queue-postgres-1     postgres:17.6-alpine      "docker-entrypoint.s…"   postgres     8 minutes ago    Up 8 minutes (healthy)    127.0.0.1:5432->5432/tcp
+distributed-queue-prometheus-1   prom/prometheus:v3.2.1    "/bin/prometheus --c…"   prometheus   8 minutes ago    Up 2 minutes              127.0.0.1:9090->9090/tcp
+distributed-queue-redis-1        redis:7.4.5-alpine        "docker-entrypoint.s…"   redis        14 minutes ago   Up 14 minutes (healthy)   127.0.0.1:6379->6379/tcp
+distributed-queue-worker-1       distributed-queue:local   "/app/worker"            worker       4 minutes ago    Up 4 minutes (healthy)    8080/tcp, 9091/tcp
+distributed-queue-worker-2       distributed-queue:local   "/app/worker"            worker       4 minutes ago    Up 4 minutes (healthy)    8080/tcp, 9091/tcp
+distributed-queue-worker-3       distributed-queue:local   "/app/worker"            worker       4 minutes ago    Up 4 minutes (healthy)    8080/tcp, 9091/tcp

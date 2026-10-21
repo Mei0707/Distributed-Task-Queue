@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: prometheus}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: prometheus}
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: prometheus}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: prometheus}
+subjects: [{kind: ServiceAccount, name: prometheus, namespace: queue-lab}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: prometheus}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: prometheus}
+  template:
+    metadata:
+      labels: {app: prometheus}
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.2.1
+          ports: [{containerPort: 9090}]
+          volumeMounts: [{name: config, mountPath: /etc/prometheus}]
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+      volumes: [{name: config, configMap: {name: prometheus-config}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: prometheus}
+spec:
+  selector: {app: prometheus}
+  ports: [{port: 9090, targetPort: 9090}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: grafana}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: grafana}
+  template:
+    metadata:
+      labels: {app: grafana}
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.6.0
+          env:
+            - {name: GF_SECURITY_ADMIN_PASSWORD, value: queue-local-only}
+            - {name: GF_USERS_ALLOW_SIGN_UP, value: "false"}
+          ports: [{containerPort: 3000}]
+          volumeMounts:
+            - {name: datasource, mountPath: /etc/grafana/provisioning/datasources}
+            - {name: provider, mountPath: /etc/grafana/provisioning/dashboards}
+            - {name: dashboard, mountPath: /var/lib/grafana/dashboards}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+      volumes:
+        - {name: datasource, configMap: {name: grafana-datasources}}
+        - {name: provider, configMap: {name: grafana-provider}}
+        - {name: dashboard, configMap: {name: grafana-dashboard}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: grafana}
+spec:
+  selector: {app: grafana}
+  ports: [{port: 3000, targetPort: 3000}]

@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
 	imagetask "github.com/yourname/asynq-task-queue/internal/tasks/image"
@@ -11,12 +10,12 @@ import (
 
 // ImageHandler handles HTTP requests for image processing task enqueueing.
 type ImageHandler struct {
-	client *asynq.Client
-	logger *zap.Logger
+	submitter *SubmissionHandler
+	logger    *zap.Logger
 }
 
-func NewImageHandler(client *asynq.Client, logger *zap.Logger) *ImageHandler {
-	return &ImageHandler{client: client, logger: logger}
+func NewImageHandler(submitter *SubmissionHandler, logger *zap.Logger) *ImageHandler {
+	return &ImageHandler{submitter: submitter, logger: logger}
 }
 
 // EnqueueImageRequest is the JSON body for POST /tasks/image/resize
@@ -29,8 +28,8 @@ type EnqueueImageRequest struct {
 	Format       string `json:"format" binding:"required,oneof=jpeg png webp"`
 
 	// Scheduling options (same pattern as email)
-	ProcessIn int    `json:"process_in_seconds"`
-	Queue     string `json:"queue"` // Recommend "low" for batch jobs, "critical" for user-facing
+	ProcessIn int    `json:"process_in_seconds" binding:"min=0,max=604800"`
+	Queue     string `json:"queue" binding:"omitempty,oneof=critical default low"` // Recommend "low" for batch jobs, "critical" for user-facing
 }
 
 // EnqueueResize godoc
@@ -40,7 +39,7 @@ type EnqueueImageRequest struct {
 // @Accept       json
 // @Produce      json
 // @Param        body  body  EnqueueImageRequest  true  "Image resize payload"
-// @Success      201   {object}  response.APIResponse
+// @Success      202   {object}  response.APIResponse
 // @Failure      400   {object}  response.APIResponse
 // @Failure      500   {object}  response.APIResponse
 // @Router       /tasks/image/resize [post]
@@ -67,27 +66,5 @@ func (h *ImageHandler) EnqueueResize(c *gin.Context) {
 		return
 	}
 
-	opts := buildEnqueueOptions(req.Queue, req.ProcessIn)
-
-	info, err := h.client.Enqueue(task, opts...)
-	if err != nil {
-		h.logger.Error("Failed to enqueue image resize task",
-			zap.Error(err),
-			zap.String("source", req.SourceURL),
-		)
-		response.InternalError(c, "Failed to enqueue task: "+err.Error())
-		return
-	}
-
-	h.logger.Info("Image resize task enqueued",
-		zap.String("task_id", info.ID),
-		zap.String("queue", info.Queue),
-		zap.String("source", req.SourceURL),
-	)
-
-	response.Created(c, response.TaskEnqueuedData{
-		TaskID: info.ID,
-		Queue:  info.Queue,
-		Status: info.State.String(),
-	})
+	h.submitter.Submit(c, task, req.Queue, req.ProcessIn)
 }

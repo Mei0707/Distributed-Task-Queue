@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -8,18 +10,20 @@ import (
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
 
+	"github.com/yourname/asynq-task-queue/internal/jobs"
 	"github.com/yourname/asynq-task-queue/pkg/response"
 )
 
-// InspectHandler exposes read-only endpoints for monitoring queue health.
+// InspectHandler exposes queue monitoring and transport-control endpoints.
 // This is useful when you don't want to run the full Asynqmon Web UI.
 type InspectHandler struct {
 	inspector *asynq.Inspector
 	logger    *zap.Logger
+	store     *jobs.Store
 }
 
-func NewInspectHandler(inspector *asynq.Inspector, logger *zap.Logger) *InspectHandler {
-	return &InspectHandler{inspector: inspector, logger: logger}
+func NewInspectHandler(inspector *asynq.Inspector, logger *zap.Logger, store *jobs.Store) *InspectHandler {
+	return &InspectHandler{inspector: inspector, logger: logger, store: store}
 }
 
 // ListQueues returns all known queues and their sizes.
@@ -70,7 +74,7 @@ func (h *InspectHandler) ListActiveTasks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"tasks": tasks, "page": page, "page_size": size})
+	c.JSON(http.StatusOK, gin.H{"tasks": taskViews(tasks), "page": page, "page_size": size})
 }
 
 // ListPendingTasks returns tasks waiting to be picked up by a worker.
@@ -85,7 +89,7 @@ func (h *InspectHandler) ListPendingTasks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"tasks": tasks, "page": page, "page_size": size})
+	c.JSON(http.StatusOK, gin.H{"tasks": taskViews(tasks), "page": page, "page_size": size})
 }
 
 // ListScheduledTasks returns tasks queued for future processing.
@@ -100,7 +104,7 @@ func (h *InspectHandler) ListScheduledTasks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"tasks": tasks, "page": page, "page_size": size})
+	c.JSON(http.StatusOK, gin.H{"tasks": taskViews(tasks), "page": page, "page_size": size})
 }
 
 // ListRetryTasks returns tasks that failed and are waiting to be retried.
@@ -115,7 +119,7 @@ func (h *InspectHandler) ListRetryTasks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"tasks": tasks, "page": page, "page_size": size})
+	c.JSON(http.StatusOK, gin.H{"tasks": taskViews(tasks), "page": page, "page_size": size})
 }
 
 // ListArchivedTasks returns the dead letter queue — tasks that exhausted all retries.
@@ -193,6 +197,9 @@ func (h *InspectHandler) RunTask(c *gin.Context) {
 // ArchiveTask moves a pending, scheduled, or retry task to archived.
 // POST /api/v1/queues/:queue/tasks/:task_id/archive
 func (h *InspectHandler) ArchiveTask(c *gin.Context) {
+	if h.durableTask(c) {
+		return
+	}
 	queue := c.Param("queue")
 	taskID := c.Param("task_id")
 
@@ -212,6 +219,9 @@ func (h *InspectHandler) ArchiveTask(c *gin.Context) {
 // DeleteTask removes a pending, scheduled, retry, or archived task.
 // DELETE /api/v1/queues/:queue/tasks/:task_id
 func (h *InspectHandler) DeleteTask(c *gin.Context) {
+	if h.durableTask(c) {
+		return
+	}
 	queue := c.Param("queue")
 	taskID := c.Param("task_id")
 
@@ -228,6 +238,24 @@ func (h *InspectHandler) DeleteTask(c *gin.Context) {
 	})
 }
 
+// Direct Redis deletion could strand an accepted database job. Cancellation is
+// serialized with execution in PostgreSQL; the transport message can then drain.
+func (h *InspectHandler) durableTask(c *gin.Context) bool {
+	if h.store == nil {
+		return false
+	}
+	_, err := h.store.Get(c.Request.Context(), c.Param("task_id"))
+	if errors.Is(err, jobs.ErrNotFound) {
+		return false
+	}
+	if err != nil {
+		response.InternalError(c, "Failed to check durable job")
+		return true
+	}
+	c.JSON(http.StatusConflict, gin.H{"error": "Use POST /api/v1/jobs/" + c.Param("task_id") + "/cancel to cancel a durable job"})
+	return true
+}
+
 // getPagination extracts page and page_size query params with sane defaults.
 func getPagination(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -239,4 +267,12 @@ func getPagination(c *gin.Context) (int, int) {
 		size = 20
 	}
 	return page, size
+}
+
+func taskViews(tasks []*asynq.TaskInfo) []gin.H {
+	result := make([]gin.H, 0, len(tasks))
+	for _, task := range tasks {
+		result = append(result, gin.H{"id": task.ID, "type": task.Type, "state": task.State.String(), "payload": json.RawMessage(task.Payload), "retry_count": task.Retried, "last_error": task.LastErr, "next_process_at": task.NextProcessAt})
+	}
+	return result
 }

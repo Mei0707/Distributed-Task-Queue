@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -11,10 +12,16 @@ import (
 // Config holds all configuration for the application.
 // Values are loaded from config.yaml or environment variables.
 type Config struct {
-	Server ServerConfig `mapstructure:"server"`
-	Redis  RedisConfig  `mapstructure:"redis"`
-	Queue  QueueConfig  `mapstructure:"queue"`
-	Worker WorkerConfig `mapstructure:"worker"`
+	Server   ServerConfig   `mapstructure:"server"`
+	Redis    RedisConfig    `mapstructure:"redis"`
+	Queue    QueueConfig    `mapstructure:"queue"`
+	Worker   WorkerConfig   `mapstructure:"worker"`
+	Database DatabaseConfig `mapstructure:"database"`
+}
+
+type DatabaseConfig struct {
+	URL            string `mapstructure:"url"`
+	MaxConnections int32  `mapstructure:"max_connections"`
 }
 
 type ServerConfig struct {
@@ -39,7 +46,8 @@ type QueueConfig struct {
 
 type WorkerConfig struct {
 	// Total number of concurrent goroutines processing tasks.
-	Concurrency int `mapstructure:"concurrency"`
+	Concurrency int    `mapstructure:"concurrency"`
+	MetricsPort string `mapstructure:"metrics_port"`
 
 	// How long a task can run before being forcefully cancelled.
 	TaskTimeout time.Duration `mapstructure:"task_timeout"`
@@ -71,6 +79,9 @@ func Load() (*Config, error) {
 	v.SetDefault("queue.low", 1)
 
 	v.SetDefault("worker.concurrency", 20)
+	v.SetDefault("worker.metrics_port", "9091")
+	v.SetDefault("database.url", "postgres://queue:queue@localhost:5432/queue?sslmode=disable")
+	v.SetDefault("database.max_connections", 30)
 	v.SetDefault("worker.task_timeout", "5m")
 	v.SetDefault("worker.max_retry", 5)
 	v.SetDefault("worker.retention_ttl", "72h")
@@ -95,6 +106,12 @@ func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, err
+	}
+	if cfg.Database.MaxConnections < 2 || cfg.Worker.Concurrency < 1 || cfg.Worker.MaxRetry < 0 || cfg.Worker.TaskTimeout < time.Second || cfg.Worker.RetentionTTL < time.Second {
+		return nil, fmt.Errorf("invalid database pool size or worker settings")
+	}
+	if cfg.Queue.Critical <= 0 || cfg.Queue.Default <= 0 || cfg.Queue.Low <= 0 {
+		return nil, fmt.Errorf("queue weights must be positive")
 	}
 
 	return cfg, nil

@@ -1,0 +1,28 @@
+[
+  {
+    "pod": "worker-74476d4bd-4mp52",
+    "ready": true,
+    "restarts": 0,
+    "last_state": {}
+  },
+  {
+    "pod": "worker-74476d4bd-ctpns",
+    "ready": true,
+    "restarts": 1,
+    "last_state": {
+      "terminated": {
+        "containerID": "containerd://84aa9ca87621ff516d72447d68790911a2d88c646d2b3c7906904304ac9a07b8",
+        "exitCode": 137,
+        "finishedAt": "2026-10-20T23:55:30Z",
+        "reason": "Error",
+        "startedAt": "2026-10-20T23:48:57Z"
+      }
+    }
+  },
+  {
+    "pod": "worker-74476d4bd-w4p7b",
+    "ready": true,
+    "restarts": 0,
+    "last_state": {}
+  }
+]

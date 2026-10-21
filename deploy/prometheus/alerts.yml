@@ -1,0 +1,28 @@
+groups:
+  - name: queue
+    rules:
+      - alert: QueueOutboxStalled
+        expr: queue_outbox_oldest_seconds > 30
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: "Accepted jobs have not reached Redis"}
+      - alert: QueueDatabaseUnavailable
+        expr: queue_database_up == 0
+        for: 30s
+        labels: {severity: critical}
+        annotations: {summary: "PostgreSQL unavailable to the API"}
+      - alert: QueueRedisUnavailable
+        expr: queue_redis_up == 0
+        for: 30s
+        labels: {severity: critical}
+        annotations: {summary: "Redis unavailable to the API"}
+      - alert: QueueExecutionFailures
+        expr: sum(rate(queue_executions_total{outcome="failed"}[5m])) > 0
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: "Workers are failing jobs"}
+      - alert: QueueNoWorkers
+        expr: absent(up{job="workers"} == 1)
+        for: 30s
+        labels: {severity: critical}
+        annotations: {summary: "No healthy worker metrics targets"}

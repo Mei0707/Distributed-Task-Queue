@@ -1,0 +1,6 @@
+.env
+coverage.out
+*.test
+artifacts/
+!artifacts/.gitkeep
+

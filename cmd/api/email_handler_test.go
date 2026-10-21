@@ -4,17 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yourname/asynq-task-queue/internal/config"
 	"go.uber.org/zap"
 )
+
+func TestMain(m *testing.M) { gin.SetMode(gin.TestMode); os.Exit(m.Run()) }
 
 func TestEmailEnqueueValidationError(t *testing.T) {
 	t.Parallel()
 
-	gin.SetMode(gin.TestMode)
 	handler := NewEmailHandler(nil, zap.NewNop())
 
 	rec := httptest.NewRecorder()
@@ -41,29 +44,10 @@ func TestEmailEnqueueValidationError(t *testing.T) {
 	}
 }
 
-func TestBuildEnqueueOptionsDefaults(t *testing.T) {
-	t.Parallel()
-
-	opts := buildEnqueueOptions("", 0)
-	if len(opts) != 1 {
-		t.Fatalf("expected 1 option, got %d", len(opts))
-	}
-}
-
-func TestBuildEnqueueOptionsQueueAndDelay(t *testing.T) {
-	t.Parallel()
-
-	opts := buildEnqueueOptions("low", 30)
-	if len(opts) != 2 {
-		t.Fatalf("expected 2 options, got %d", len(opts))
-	}
-}
-
 func TestDashboardRoute(t *testing.T) {
 	t.Parallel()
 
-	gin.SetMode(gin.TestMode)
-	router := NewRouter(nil, nil, zap.NewNop())
+	router := NewRouter(nil, nil, zap.NewNop(), nil, &config.Config{})
 
 	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
 	rec := httptest.NewRecorder()

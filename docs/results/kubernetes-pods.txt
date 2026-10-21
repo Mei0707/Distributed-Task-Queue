@@ -1,0 +1,10 @@
+NAME                          READY   STATUS    RESTARTS     AGE
+api-7bbd5466b4-h7l79          1/1     Running   0            10m
+api-7bbd5466b4-vthzh          1/1     Running   0            10m
+grafana-dc5988b56-9s9fq       1/1     Running   0            5m10s
+postgres-0                    1/1     Running   0            10m
+prometheus-5f4d5bbfd6-v9twc   1/1     Running   0            5m10s
+redis-0                       1/1     Running   0            10m
+worker-74476d4bd-4mp52        1/1     Running   0            4m34s
+worker-74476d4bd-ctpns        1/1     Running   1 (3m ago)   10m
+worker-74476d4bd-w4p7b        1/1     Running   0            10m

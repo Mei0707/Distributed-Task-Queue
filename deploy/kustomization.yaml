@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: queue-lab
+resources:
+  - k8s/namespace.yaml
+  - k8s/data.yaml
+  - k8s/apps.yaml
+  - k8s/monitoring.yaml
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus.yml=k8s/prometheus.yml
+      - alerts.yml=prometheus/alerts.yml
+  - name: grafana-datasources
+    files:
+      - prometheus.yml=grafana/provisioning/datasources/prometheus.yml
+  - name: grafana-provider
+    files:
+      - queue.yml=grafana/provisioning/dashboards/queue.yml
+  - name: grafana-dashboard
+    files:
+      - queue.json=grafana/dashboards/queue.json
+secretGenerator:
+  - name: queue-database
+    literals:
+      - DATABASE_URL=postgres://queue:queue@postgres:5432/queue?sslmode=disable
+      - POSTGRES_USER=queue
+      - POSTGRES_PASSWORD=queue
+      - POSTGRES_DB=queue
+generatorOptions:
+  disableNameSuffixHash: true
